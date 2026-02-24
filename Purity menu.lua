@@ -33,18 +33,31 @@ local ESP = {
 }
 
 local AIMBOT = {
-	Enabled    = false,   -- toggle principal
-	Silent     = false,   -- silent aim (deflect bullet)
-	Prediction = false,   -- lead shot
-	FOVCircle  = false,   -- círculo de FOV na tela
-	TeamCheck  = true,    -- não mirar em aliados
-	VisCheck   = false,   -- só mirar em players visíveis
-	AutoShoot  = false,   -- atira automaticamente no alvo
-	--
-	FOVRadius    = 150,   -- raio em pixels
-	Smoothness   = 8,     -- 1 = instantâneo, 20 = muito suave
-	TargetPart   = "Head",-- parte do corpo alvo
+	Enabled    = false,
+	Silent     = false,
+	Prediction = false,
+	FOVCircle  = false,
+	TeamCheck  = true,
+	VisCheck   = false,
+	AutoShoot  = false,
+	FOVRadius  = 150,
+	Smoothness = 8,
+	TargetPart = "Head",
 }
+
+local COMBAT = {
+	NoRecoil     = false,
+	NoSpread     = false,
+	RapidFire    = false,
+	InfiniteAmmo = false,
+	BunnyHop     = false,
+	FastReload   = false,
+	FireRateMult = 1,
+	ReloadSpeed  = 1,
+}
+
+-- Conexões ativas de combat (guardamos para poder desligar)
+local combatConns = {}
 
 -- ══════════════════════════════════════════════════════════
 --                       HELPERS
@@ -721,11 +734,228 @@ local function onTargetPartHead()   AIMBOT.TargetPart = "Head"              end
 local function onTargetPartTorso()  AIMBOT.TargetPart = "HumanoidRootPart"  end
 
 -- [ COMBAT ]
-local function onNoRecoilToggle(s)     print("[Purity] No Recoil:", s)    end
-local function onNoSpreadToggle(s)     print("[Purity] No Spread:", s)    end
-local function onRapidFireToggle(s)    print("[Purity] Rapid Fire:", s)   end
-local function onInfiniteAmmoToggle(s) print("[Purity] Inf. Ammo:", s)    end
-local function onFireRateChange(v)     print("[Purity] Fire Rate:", v)    end
+
+-- ── No Recoil ─────────────────────────────────────────────
+-- Intercepta o evento de câmera no Stepped e compensa
+-- o kick vertical/horizontal causado pelo recuo.
+local lastCamCF = nil
+
+local function onNoRecoilToggle(s)
+	COMBAT.NoRecoil = s
+	if s then
+		combatConns.noRecoil = RunService.RenderStepped:Connect(function()
+			if not COMBAT.NoRecoil then return end
+			-- Salva o CFrame antes do frame de física
+			lastCamCF = Camera.CFrame
+		end)
+		-- Após física: restaura apenas a rotação vertical (pitch)
+		-- preservando yaw (rotação horizontal) para o jogador
+		combatConns.noRecoilPost = RunService.Stepped:Connect(function()
+			if not COMBAT.NoRecoil or not lastCamCF then return end
+			local cur = Camera.CFrame
+			-- Extrai os ângulos
+			local _, curY, _ = cur:ToEulerAnglesYXZ()
+			local _, oldY, _ = lastCamCF:ToEulerAnglesYXZ()
+			-- Se o pitch mudou mais do que um threshold → recuo detectado
+			-- Mantém o yaw atual (o jogador pode girar) mas trava o pitch
+			local cx, _, cz = cur.Position.X, cur.Position.Y, cur.Position.Z
+			if math.abs(curY - oldY) < 0.002 then
+				-- Câmera não girou horizontalmente: é recuo puro
+				Camera.CFrame = CFrame.new(cur.Position) * CFrame.fromEulerAnglesYXZ(0, curY, 0)
+					* CFrame.fromEulerAnglesYXZ(select(1, lastCamCF:ToEulerAnglesYXZ()), 0, 0)
+			end
+		end)
+	else
+		if combatConns.noRecoil     then combatConns.noRecoil:Disconnect();     combatConns.noRecoil     = nil end
+		if combatConns.noRecoilPost then combatConns.noRecoilPost:Disconnect(); combatConns.noRecoilPost = nil end
+		lastCamCF = nil
+	end
+end
+
+-- ── No Spread ─────────────────────────────────────────────
+-- Trava a câmera no momento exato do disparo para que o
+-- primeiro tiro sempre acerte o centro da mira.
+local noSpreadSaved = nil
+
+local function onNoSpreadToggle(s)
+	COMBAT.NoSpread = s
+	if s then
+		combatConns.noSpreadDown = UserInputService.InputBegan:Connect(function(input, gpe)
+			if gpe then return end
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				noSpreadSaved = Camera.CFrame
+			end
+		end)
+		combatConns.noSpreadUp = UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				noSpreadSaved = nil
+			end
+		end)
+		combatConns.noSpreadStep = RunService.RenderStepped:Connect(function()
+			if COMBAT.NoSpread and noSpreadSaved then
+				Camera.CFrame = noSpreadSaved
+			end
+		end)
+	else
+		for _, k in ipairs({"noSpreadDown","noSpreadUp","noSpreadStep"}) do
+			if combatConns[k] then combatConns[k]:Disconnect(); combatConns[k] = nil end
+		end
+		noSpreadSaved = nil
+	end
+end
+
+-- ── Rapid Fire ────────────────────────────────────────────
+-- Aumenta a cadência simulando cliques extras por frame
+-- de acordo com o multiplicador FireRateMult.
+local rapidConn = nil
+
+local function applyRapidFire()
+	if rapidConn then rapidConn:Disconnect(); rapidConn = nil end
+	if not COMBAT.RapidFire then return end
+
+	-- Quantidade de cliques extras = FireRateMult - 1
+	rapidConn = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+		if not COMBAT.RapidFire then return end
+		-- Simula cliques adicionais no executor
+		for _ = 1, math.max(COMBAT.FireRateMult - 1, 0) do
+			pcall(function() mouse1click() end)
+		end
+	end)
+end
+
+local function onRapidFireToggle(s)
+	COMBAT.RapidFire = s
+	applyRapidFire()
+end
+
+-- ── Infinite Ammo ─────────────────────────────────────────
+-- Monitora a tool equipada e reabastece a munição toda vez
+-- que ela muda, mantendo sempre no máximo.
+local infiniteAmmoConn = nil
+local infiniteAmmoCharConn = nil
+
+local function hookAmmo(tool)
+	if infiniteAmmoConn then infiniteAmmoConn:Disconnect(); infiniteAmmoConn = nil end
+	if not tool or not COMBAT.InfiniteAmmo then return end
+
+	-- Tenta encontrar a config de ammo comum em frameworks Roblox
+	local ammoConfigs = {
+		tool:FindFirstChild("AmmoInClip"),
+		tool:FindFirstChild("Ammo"),
+		tool:FindFirstChild("CurrentAmmo"),
+	}
+
+	for _, cfg in ipairs(ammoConfigs) do
+		if cfg and cfg:IsA("NumberValue") or (cfg and cfg:IsA("IntValue")) then
+			local maxVal = cfg.Value
+			infiniteAmmoConn = cfg.Changed:Connect(function(v)
+				if COMBAT.InfiniteAmmo and v < maxVal then
+					cfg.Value = maxVal
+				end
+			end)
+			break
+		end
+	end
+end
+
+local function onInfiniteAmmoToggle(s)
+	COMBAT.InfiniteAmmo = s
+	if s then
+		-- Hookar a tool atual
+		local char = LocalPlayer.Character
+		if char then hookAmmo(char:FindFirstChildOfClass("Tool")) end
+		-- Hookar quando equipar nova tool
+		infiniteAmmoCharConn = LocalPlayer.CharacterAdded:Connect(function(c)
+			c.ChildAdded:Connect(function(child)
+				if child:IsA("Tool") and COMBAT.InfiniteAmmo then hookAmmo(child) end
+			end)
+		end)
+		if LocalPlayer.Character then
+			LocalPlayer.Character.ChildAdded:Connect(function(child)
+				if child:IsA("Tool") and COMBAT.InfiniteAmmo then hookAmmo(child) end
+			end)
+		end
+	else
+		if infiniteAmmoConn     then infiniteAmmoConn:Disconnect();     infiniteAmmoConn     = nil end
+		if infiniteAmmoCharConn then infiniteAmmoCharConn:Disconnect(); infiniteAmmoCharConn = nil end
+	end
+end
+
+-- ── Bunny Hop ─────────────────────────────────────────────
+-- Detecta quando o jogador mantém Espaço pressionado e
+-- força o pulo toda vez que toca o chão.
+local bhopConn = nil
+
+local function onBunnyHopToggle(s)
+	COMBAT.BunnyHop = s
+	if s then
+		bhopConn = RunService.Heartbeat:Connect(function()
+			if not COMBAT.BunnyHop then return end
+			local char = LocalPlayer.Character
+			if not char then return end
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			if not hum or not hrp then return end
+
+			local spaceHeld = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+			if spaceHeld and hum:GetState() == Enum.HumanoidStateType.Landed then
+				hum:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
+	else
+		if bhopConn then bhopConn:Disconnect(); bhopConn = nil end
+	end
+end
+
+-- ── Fast Reload ───────────────────────────────────────────
+-- Intercepta a animação de recarga e a reduz pelo fator
+-- ReloadSpeed usando AnimationTrack:AdjustSpeed().
+local fastReloadConn = nil
+
+local function applyFastReload(char)
+	if fastReloadConn then fastReloadConn:Disconnect(); fastReloadConn = nil end
+	if not char or not COMBAT.FastReload then return end
+
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+
+	local animator = hum:FindFirstChildOfClass("Animator")
+	if not animator then return end
+
+	fastReloadConn = animator.AnimationPlayed:Connect(function(track)
+		-- Detecta animação de recarga pelo nome (funciona na maioria dos jogos)
+		local name = track.Name:lower()
+		if name:find("reload") or name:find("recarg") then
+			track:AdjustSpeed(COMBAT.ReloadSpeed)
+		end
+	end)
+end
+
+local function onFastReloadToggle(s)
+	COMBAT.FastReload = s
+	if s then
+		applyFastReload(LocalPlayer.Character)
+		LocalPlayer.CharacterAdded:Connect(function(c)
+			task.wait(0.5)
+			if COMBAT.FastReload then applyFastReload(c) end
+		end)
+	else
+		if fastReloadConn then fastReloadConn:Disconnect(); fastReloadConn = nil end
+	end
+end
+
+-- ── Sliders ───────────────────────────────────────────────
+local function onFireRateChange(v)
+	COMBAT.FireRateMult = v
+	-- Reinicia o rapid fire com o novo valor se estiver ativo
+	if COMBAT.RapidFire then applyRapidFire() end
+end
+
+local function onReloadSpeedChange(v)
+	COMBAT.ReloadSpeed = v
+end
 
 -- ══════════════════════════════════════════════════════════
 --                        PALETA
@@ -859,7 +1089,7 @@ local Badge = Instance.new("TextLabel")
 Badge.Size             = UDim2.new(0,42,0,16)
 Badge.Position         = UDim2.new(0,36,0,32)
 Badge.BackgroundColor3 = C.btnOn
-Badge.Text             = "v3.0"
+Badge.Text             = "v4.0"
 Badge.TextColor3       = C.neonBright
 Badge.Font             = Enum.Font.GothamBold
 Badge.TextSize         = 10
@@ -1267,14 +1497,25 @@ end
 
 -- ── ABA COMBAT ────────────────────────────────────────────
 do
+	-- Modificações de arma
 	local sec1 = makeSection(pageCombat, "Weapon Mods", 1)
-	makeToggle(sec1, "No Recoil",     "Remove o recuo da arma",               1, onNoRecoilToggle)
-	makeToggle(sec1, "No Spread",     "Remove a dispersão dos tiros",         2, onNoSpreadToggle)
-	makeToggle(sec1, "Rapid Fire",    "Aumenta a cadência de disparo",        3, onRapidFireToggle)
-	makeToggle(sec1, "Infinite Ammo", "Munição não se esgota",                4, onInfiniteAmmoToggle)
+	makeToggle(sec1, "No Recoil",     "Trava o pitch da câmera ao atirar",         1, onNoRecoilToggle)
+	makeToggle(sec1, "No Spread",     "Mantém câmera travada durante o disparo",   2, onNoSpreadToggle)
+	makeToggle(sec1, "Rapid Fire",    "Simula cliques extras por disparo",         3, onRapidFireToggle)
+	makeToggle(sec1, "Infinite Ammo", "Reabastece munição automaticamente",        4, onInfiniteAmmoToggle)
 
-	local sec2 = makeSection(pageCombat, "Configurações", 2)
-	makeSlider(sec2, "Fire Rate", 1, 10, 1, "x", 1, onFireRateChange)
+	-- Mobilidade
+	local sec2 = makeSection(pageCombat, "Mobilidade", 2)
+	makeToggle(sec2, "Bunny Hop",     "Pula automaticamente ao manter Espaço",     1, onBunnyHopToggle)
+
+	-- Recarga
+	local sec3 = makeSection(pageCombat, "Recarga", 3)
+	makeToggle(sec3, "Fast Reload",   "Acelera a animação de recarga",             1, onFastReloadToggle)
+
+	-- Configurações numéricas
+	local sec4 = makeSection(pageCombat, "Configurações", 4)
+	makeSlider(sec4, "Fire Rate Mult",  1, 10, 1, "x", 1, onFireRateChange)
+	makeSlider(sec4, "Reload Speed",    1,  5, 1, "x", 2, onReloadSpeedChange)
 end
 
 -- ── ATIVA ABA ESP POR PADRÃO ──────────────────────────────
@@ -1326,6 +1567,11 @@ local originalH  = 480
 CloseBtn.MouseButton1Click:Connect(function()
 	stopAimbotLoop(); stopSilentAim()
 	fovCircle.Visible = false
+	-- Limpa conexões de combat
+	for _, conn in pairs(combatConns) do pcall(function() conn:Disconnect() end) end
+	if bhopConn        then bhopConn:Disconnect()        end
+	if fastReloadConn  then fastReloadConn:Disconnect()  end
+	if infiniteAmmoConn then infiniteAmmoConn:Disconnect() end
 	for _, plr in ipairs(Players:GetPlayers()) do
 		clearESP(plr); clearSkeleton(plr); clearTracer(plr); clearHealthBar(plr)
 	end
@@ -1387,19 +1633,17 @@ TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingD
 TweenService:Create(Glow, TweenInfo.new(0.4), {ImageTransparency = 0.6}):Play()
 
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  PURITY v3.0  —  ESP + AIMBOT COMPLETO                  ║
+-- ║  PURITY v4.0  —  ESP + AIMBOT + COMBAT COMPLETO         ║
 -- ║                                                          ║
--- ║  AIMBOT                                                  ║
--- ║  ◎ Aimbot Ativo   → Move câmera suavemente              ║
--- ║  ◎ Silent Aim     → Desvia projétil 1 frame             ║
--- ║  ◎ Prediction     → Leva velocidade do alvo em conta    ║
--- ║  ◎ FOV Circle     → Círculo roxo desenhado na tela      ║
--- ║  ◎ Auto Shoot     → Clique automático ao travar         ║
--- ║  ◎ Team Check     → Filtra aliados                      ║
--- ║  ◎ Vis. Check     → Só mira em players visíveis         ║
--- ║  ◎ Parte Alvo     → Cabeça ou Torso                     ║
--- ║  ◎ FOV Size       → Slider 50–500 px                    ║
--- ║  ◎ Smoothness     → Slider 1–20x                        ║
+-- ║  COMBAT                                                  ║
+-- ║  ⚡ No Recoil      → Trava pitch da câmera ao atirar    ║
+-- ║  ⚡ No Spread      → Câmera locked no frame do disparo  ║
+-- ║  ⚡ Rapid Fire     → Cliques extras por disparo         ║
+-- ║  ⚡ Infinite Ammo  → Reabastece ammo automaticamente    ║
+-- ║  ⚡ Bunny Hop      → Pulo auto ao manter Espaço         ║
+-- ║  ⚡ Fast Reload    → Acelera animação de recarga        ║
+-- ║  ⚡ Fire Rate Mult → Slider 1–10x                       ║
+-- ║  ⚡ Reload Speed   → Slider 1–5x                        ║
 -- ║                                                          ║
 -- ║  RightShift → mostra/esconde o menu                     ║
 -- ╚══════════════════════════════════════════════════════════╝
