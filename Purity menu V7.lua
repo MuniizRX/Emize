@@ -2227,7 +2227,7 @@ do
 
 	-- Configurações numéricas
 	local sec4 = makeSection(pageAimbot, "Configurações", 4)
-	makeSlider(sec4, "FOV Size",    50,  500, 150, " px", 1, onFOVChange)
+	makeSlider(sec4, "FOV Size",    20,  500, 150, " px", 1, onFOVChange)
 	makeSlider(sec4, "Smoothness",   1,   20,   8, "x",   2, onSmoothnessChange)
 	makeSlider(sec4, "Max Distance", 50, 1000, 500, " st", 3, onMaxDistChange)
 	makeSlider(sec4, "Shake Amount", 1,   10,   2, "x",   4, onShakeAmtChange)
@@ -2280,7 +2280,7 @@ do
 	-- Inimigos
 	local sec3 = makeSection(pageMisc, "Inimigos", 3)
 	makeToggle(sec3, "Big Head",      "Aumenta a cabeça dos inimigos",           1, onBigHeadToggle)
-	makeSlider(sec3, "Head Scale",    1, 5, 2, "x",        2, onBigHeadScaleChange)
+	makeSlider(sec3, "Head Scale",    1, 50, 2, "x",        2, onBigHeadScaleChange)
 
 	-- Arma
 	local sec4 = makeSection(pageMisc, "Arma", 4)
