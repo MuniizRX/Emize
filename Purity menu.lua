@@ -1172,7 +1172,7 @@ do
 	makeToggle(sec1, "FOV Circle",    "Exibe o círculo de campo de mira",      4, onFOVCircleToggle)
 
 	local sec2 = makeSection(pageAimbot, "Configurações", 2)
-	makeSlider(sec2, "FOV Size",   50, 500, 150, " px", 1, onFOVChange)
+	makeSlider(sec2, "FOV Size",   30, 500, 150, " px", 1, onFOVChange)
 	makeSlider(sec2, "Smoothness",  1,  20,   8, "x",   2, onSmoothnessChange)
 end
 
