@@ -7,10 +7,363 @@ local TweenService     = game:GetService("TweenService")
 local RunService       = game:GetService("RunService")
 local VirtualUser      = game:GetService("VirtualUser")
 local Lighting         = game:GetService("Lighting")
+local HttpService      = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 local Camera      = workspace.CurrentCamera
+
+-- ============================================================
+--  SISTEMA HWID - Purity v7.0
+--  Verificacao automatica por HWID — usuario nao digita nada.
+--  Configure o link do GitHub Gist abaixo (so uma vez).
+--  Formato no Gist: HWID|YYYY-MM-DD|apelido
+-- ============================================================
+
+local GIST_URL = "https://gist.githubusercontent.com/MuniizRX/8b7a81d27b80035bce29851ea92b3ba8/raw/purity_keys.txt"
+
+local function loadMainGUI() end -- placeholder, definida mais abaixo
+
+-- Pega o HWID do PC (ID unico gerado pelo Roblox por maquina)
+local hwid = ""
+pcall(function()
+	hwid = tostring(game:GetService("RbxAnalyticsService"):GetClientId())
+end)
+if hwid == "" then
+	-- Fallback: usa UserId + nome da maquina como identificador alternativo
+	hwid = tostring(LocalPlayer.UserId)
+end
+
+-- ── GUI de verificacao ──
+local KeyGui = Instance.new("ScreenGui")
+KeyGui.Name = "PurityHWIDCheck"
+KeyGui.ResetOnSpawn = false
+KeyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+KeyGui.DisplayOrder = 9999
+KeyGui.IgnoreGuiInset = true
+KeyGui.Parent = PlayerGui
+
+local Overlay = Instance.new("Frame", KeyGui)
+Overlay.Size = UDim2.new(1,0,1,0)
+Overlay.BackgroundColor3 = Color3.fromRGB(0,0,0)
+Overlay.BackgroundTransparency = 0.45
+Overlay.BorderSizePixel = 0
+Overlay.ZIndex = 1
+
+local KWin = Instance.new("Frame", KeyGui)
+KWin.Size = UDim2.new(0,380,0,0)
+KWin.Position = UDim2.new(0.5,-190,0.5,-100)
+KWin.BackgroundColor3 = Color3.fromRGB(15,15,20)
+KWin.BackgroundTransparency = 0.6
+KWin.BorderSizePixel = 0
+KWin.ZIndex = 2
+Instance.new("UICorner", KWin).CornerRadius = UDim.new(0,12)
+local KStroke = Instance.new("UIStroke", KWin)
+KStroke.Color = Color3.fromRGB(110,50,230)
+KStroke.Thickness = 1.4
+
+-- Header
+local KHeader = Instance.new("Frame", KWin)
+KHeader.Size = UDim2.new(1,0,0,44)
+KHeader.BackgroundColor3 = Color3.fromRGB(13,13,18)
+KHeader.BorderSizePixel = 0
+KHeader.ZIndex = 3
+Instance.new("UICorner", KHeader).CornerRadius = UDim.new(0,12)
+local KHFix = Instance.new("Frame", KHeader)
+KHFix.Size = UDim2.new(1,0,0,12)
+KHFix.Position = UDim2.new(0,0,1,-12)
+KHFix.BackgroundColor3 = Color3.fromRGB(13,13,18)
+KHFix.BorderSizePixel = 0
+KHFix.ZIndex = 3
+local KHDiv = Instance.new("Frame", KHeader)
+KHDiv.Size = UDim2.new(1,0,0,1)
+KHDiv.Position = UDim2.new(0,0,1,0)
+KHDiv.BackgroundColor3 = Color3.fromRGB(110,50,230)
+KHDiv.BorderSizePixel = 0
+KHDiv.ZIndex = 4
+local KDot = Instance.new("Frame", KHeader)
+KDot.Size = UDim2.new(0,8,0,8)
+KDot.Position = UDim2.new(0,14,0.5,-4)
+KDot.BackgroundColor3 = Color3.fromRGB(145,85,255)
+KDot.BorderSizePixel = 0
+KDot.ZIndex = 5
+Instance.new("UICorner", KDot).CornerRadius = UDim.new(1,0)
+local KTitle = Instance.new("TextLabel", KHeader)
+KTitle.Size = UDim2.new(1,-30,1,0)
+KTitle.Position = UDim2.new(0,30,0,0)
+KTitle.BackgroundTransparency = 1
+KTitle.Text = "PURITY  —  Verificando Acesso..."
+KTitle.TextColor3 = Color3.fromRGB(238,232,255)
+KTitle.Font = Enum.Font.GothamBold
+KTitle.TextSize = 13
+KTitle.TextXAlignment = Enum.TextXAlignment.Left
+KTitle.ZIndex = 5
+
+-- Status central
+local KStatus = Instance.new("TextLabel", KWin)
+KStatus.Size = UDim2.new(1,-32,0,40)
+KStatus.Position = UDim2.new(0,16,0,58)
+KStatus.BackgroundTransparency = 1
+KStatus.Text = "Verificando seu acesso, aguarde..."
+KStatus.TextColor3 = Color3.fromRGB(148,138,180)
+KStatus.Font = Enum.Font.Gotham
+KStatus.TextSize = 12
+KStatus.TextWrapped = true
+KStatus.TextXAlignment = Enum.TextXAlignment.Left
+KStatus.ZIndex = 3
+
+-- HWID display (mostra pro usuario copiar e mandar pra voce)
+local KHwidBG = Instance.new("Frame", KWin)
+KHwidBG.Size = UDim2.new(1,-32,0,34)
+KHwidBG.Position = UDim2.new(0,16,0,104)
+KHwidBG.BackgroundColor3 = Color3.fromRGB(22,20,30)
+KHwidBG.BorderSizePixel = 0
+KHwidBG.ZIndex = 3
+KHwidBG.Visible = false
+Instance.new("UICorner", KHwidBG).CornerRadius = UDim.new(0,8)
+Instance.new("UIStroke", KHwidBG).Color = Color3.fromRGB(58,48,86)
+
+local KHwidLbl = Instance.new("TextLabel", KHwidBG)
+KHwidLbl.Size = UDim2.new(1,-80,1,0)
+KHwidLbl.Position = UDim2.new(0,8,0,0)
+KHwidLbl.BackgroundTransparency = 1
+KHwidLbl.Text = hwid
+KHwidLbl.TextColor3 = Color3.fromRGB(145,85,255)
+KHwidLbl.Font = Enum.Font.GothamBold
+KHwidLbl.TextSize = 11
+KHwidLbl.TextXAlignment = Enum.TextXAlignment.Left
+KHwidLbl.TextTruncate = Enum.TextTruncate.AtEnd
+KHwidLbl.ZIndex = 4
+
+-- Botao copiar HWID
+local KCopyBtn = Instance.new("TextButton", KHwidBG)
+KCopyBtn.Size = UDim2.new(0,66,0,24)
+KCopyBtn.Position = UDim2.new(1,-72,0.5,-12)
+KCopyBtn.BackgroundColor3 = Color3.fromRGB(110,50,230)
+KCopyBtn.BorderSizePixel = 0
+KCopyBtn.Text = "📋 Copiar"
+KCopyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+KCopyBtn.Font = Enum.Font.GothamBold
+KCopyBtn.TextSize = 10
+KCopyBtn.ZIndex = 5
+Instance.new("UICorner", KCopyBtn).CornerRadius = UDim.new(0,6)
+
+KCopyBtn.MouseButton1Click:Connect(function()
+	setclipboard(hwid)
+	KCopyBtn.Text = "✓ Copiado"
+	KCopyBtn.BackgroundColor3 = Color3.fromRGB(0,160,75)
+	task.delay(2, function()
+		KCopyBtn.Text = "📋 Copiar"
+		KCopyBtn.BackgroundColor3 = Color3.fromRGB(110,50,230)
+	end)
+end)
+KCopyBtn.MouseEnter:Connect(function()
+	if KCopyBtn.Text ~= "✓ Copiado" then
+		TweenService:Create(KCopyBtn,TweenInfo.new(0.1),{BackgroundColor3=Color3.fromRGB(145,85,255)}):Play()
+	end
+end)
+KCopyBtn.MouseLeave:Connect(function()
+	if KCopyBtn.Text ~= "✓ Copiado" then
+		TweenService:Create(KCopyBtn,TweenInfo.new(0.1),{BackgroundColor3=Color3.fromRGB(110,50,230)}):Play()
+	end
+end)
+
+-- Animacao de entrada
+TweenService:Create(KWin, TweenInfo.new(0.35,Enum.EasingStyle.Quint,Enum.EasingDirection.Out), {
+	Size = UDim2.new(0,380,0,160),
+	BackgroundTransparency = 0
+}):Play()
+
+-- ── Logica HWID ──
+local function parseDate(dateStr)
+	local y,m,d = dateStr:match("(%d+)-(%d+)-(%d+)")
+	if not y then return nil end
+	return {year=tonumber(y), month=tonumber(m), day=tonumber(d)}
+end
+
+local function checkExpired(dateStr)
+	local dt = parseDate(dateStr)
+	if not dt then return true end
+	local now = os.date("*t")
+	if now.year  ~= dt.year  then return now.year  > dt.year  end
+	if now.month ~= dt.month then return now.month > dt.month end
+	return now.day > dt.day
+end
+
+local function dismiss(success)
+	TweenService:Create(KWin, TweenInfo.new(0.25,Enum.EasingStyle.Quint,Enum.EasingDirection.In),
+		{Size=UDim2.new(0,380,0,0), BackgroundTransparency=0.6}):Play()
+	TweenService:Create(Overlay, TweenInfo.new(0.25), {BackgroundTransparency=1}):Play()
+	task.delay(0.3, function()
+		KeyGui:Destroy()
+		if success then loadMainGUI() end
+	end)
+end
+
+task.spawn(function()
+	task.wait(0.4) -- espera animacao de entrada
+
+	-- Busca lista do Gist
+	local ok, result = pcall(function()
+		return game:HttpGet(GIST_URL .. "?t=" .. tostring(math.floor(tick())), true)
+	end)
+
+	if not ok then
+		KStatus.Text = "⚠  Erro de conexão. Verifique sua internet e tente novamente."
+		KStatus.TextColor3 = Color3.fromRGB(240,165,0)
+		return
+	end
+
+	-- Procura o HWID na lista
+	-- Formato: HWID|YYYY-MM-DD|apelido  ou  HWID|YYYY-MM-DD
+	local found   = false
+	local expired = false
+
+	for line in result:gmatch("[^\r\n]+") do
+		line = line:match("^%s*(.-)%s*$")
+		if line ~= "" and not line:match("^#") then
+			local parts = {}
+			for p in line:gmatch("[^|]+") do parts[#parts+1] = p:match("^%s*(.-)%s*$") end
+			if parts[1] == hwid then
+				found = true
+				if parts[2] and checkExpired(parts[2]) then
+					expired = true
+				end
+				break
+			end
+		end
+	end
+
+	if found and not expired then
+		-- Acesso liberado
+		KTitle.Text = "PURITY  —  Acesso Liberado ✓"
+		KStatus.Text = "✓  Bem-vindo ao Purity v7.0!"
+		KStatus.TextColor3 = Color3.fromRGB(0,205,95)
+		KStroke.Color = Color3.fromRGB(0,160,75)
+		task.wait(1)
+		dismiss(true)
+
+	elseif found and expired then
+		-- HWID encontrado mas expirado
+		KTitle.Text = "PURITY  —  Acesso Expirado"
+		KStatus.Text = "⏱  Seu acesso expirou.\nEntre em contato para renovar."
+		KStatus.TextColor3 = Color3.fromRGB(240,165,0)
+		KStroke.Color = Color3.fromRGB(240,165,0)
+
+	else
+		-- HWID nao encontrado — mostra o HWID pra pessoa mandar pra voce
+		KTitle.Text = "PURITY  —  Sem Acesso"
+		KStatus.Text = "✗  Seu PC não está registrado.\nEnvie o ID abaixo para liberar seu acesso:"
+		KStatus.TextColor3 = Color3.fromRGB(215,45,75)
+		KStroke.Color = Color3.fromRGB(215,45,75)
+		KHwidBG.Visible = true
+
+		-- Botao de reverificar (aparece so quando nao tem acesso)
+		local KRetryBtn = Instance.new("TextButton", KWin)
+		KRetryBtn.Size = UDim2.new(1,-32,0,34)
+		KRetryBtn.Position = UDim2.new(0,16,0,148)
+		KRetryBtn.BackgroundColor3 = Color3.fromRGB(28,24,42)
+		KRetryBtn.BorderSizePixel = 0
+		KRetryBtn.Text = "🔄  Já enviei meu ID — Verificar Acesso"
+		KRetryBtn.TextColor3 = Color3.fromRGB(145,85,255)
+		KRetryBtn.Font = Enum.Font.GothamBold
+		KRetryBtn.TextSize = 12
+		KRetryBtn.ZIndex = 4
+		Instance.new("UICorner", KRetryBtn).CornerRadius = UDim.new(0,8)
+		local KRetryStroke = Instance.new("UIStroke", KRetryBtn)
+		KRetryStroke.Color = Color3.fromRGB(80,40,160)
+		KRetryStroke.Thickness = 1
+
+		-- Expande a janela pra caber o botao
+		TweenService:Create(KWin, TweenInfo.new(0.2,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+			{Size=UDim2.new(0,380,0,200)}):Play()
+
+		KRetryBtn.MouseEnter:Connect(function()
+			TweenService:Create(KRetryBtn,TweenInfo.new(0.1),{BackgroundColor3=Color3.fromRGB(40,28,70)}):Play()
+		end)
+		KRetryBtn.MouseLeave:Connect(function()
+			TweenService:Create(KRetryBtn,TweenInfo.new(0.1),{BackgroundColor3=Color3.fromRGB(28,24,42)}):Play()
+		end)
+
+		KRetryBtn.MouseButton1Click:Connect(function()
+			-- Bloqueia clique duplo
+			KRetryBtn.Active = false
+			KRetryBtn.Text = "⏳  Verificando..."
+			KRetryBtn.TextColor3 = Color3.fromRGB(148,138,180)
+			KRetryStroke.Color = Color3.fromRGB(58,48,86)
+			KTitle.Text = "PURITY  —  Verificando Acesso..."
+			KStatus.Text = "Verificando seu acesso, aguarde..."
+			KStatus.TextColor3 = Color3.fromRGB(148,138,180)
+			KStroke.Color = Color3.fromRGB(110,50,230)
+			KHwidBG.Visible = false
+
+			-- Rebusca no Gist
+			local ok2, result2 = pcall(function()
+				return game:HttpGet(GIST_URL .. "?t=" .. tostring(math.floor(tick())), true)
+			end)
+
+			if not ok2 then
+				KTitle.Text = "PURITY  —  Sem Acesso"
+				KStatus.Text = "⚠  Erro de conexão. Tente novamente."
+				KStatus.TextColor3 = Color3.fromRGB(240,165,0)
+				KStroke.Color = Color3.fromRGB(240,165,0)
+				KHwidBG.Visible = true
+				KRetryBtn.Active = true
+				KRetryBtn.Text = "🔄  Já enviei meu ID — Verificar Acesso"
+				KRetryBtn.TextColor3 = Color3.fromRGB(145,85,255)
+				KRetryStroke.Color = Color3.fromRGB(80,40,160)
+				return
+			end
+
+			local found2, expired2 = false, false
+			for line in result2:gmatch("[^\r\n]+") do
+				line = line:match("^%s*(.-)%s*$")
+				if line ~= "" and not line:match("^#") then
+					local parts = {}
+					for p in line:gmatch("[^|]+") do parts[#parts+1] = p:match("^%s*(.-)%s*$") end
+					if parts[1] == hwid then
+						found2 = true
+						if parts[2] and checkExpired(parts[2]) then expired2 = true end
+						break
+					end
+				end
+			end
+
+			if found2 and not expired2 then
+				-- Acesso liberado!
+				KTitle.Text = "PURITY  —  Acesso Liberado ✓"
+				KStatus.Text = "✓  Bem-vindo ao Purity v7.0!"
+				KStatus.TextColor3 = Color3.fromRGB(0,205,95)
+				KStroke.Color = Color3.fromRGB(0,160,75)
+				KRetryBtn:Destroy()
+				task.wait(1)
+				dismiss(true)
+			elseif found2 and expired2 then
+				KTitle.Text = "PURITY  —  Acesso Expirado"
+				KStatus.Text = "⏱  Seu acesso expirou.\nEntre em contato para renovar."
+				KStatus.TextColor3 = Color3.fromRGB(240,165,0)
+				KStroke.Color = Color3.fromRGB(240,165,0)
+				KRetryBtn:Destroy()
+			else
+				-- Ainda nao registrado
+				KTitle.Text = "PURITY  —  Sem Acesso"
+				KStatus.Text = "✗  Ainda não registrado.\nEnvie o ID abaixo e aguarde:"
+				KStatus.TextColor3 = Color3.fromRGB(215,45,75)
+				KStroke.Color = Color3.fromRGB(215,45,75)
+				KHwidBG.Visible = true
+				KRetryBtn.Active = true
+				KRetryBtn.Text = "🔄  Verificar Novamente"
+				KRetryBtn.TextColor3 = Color3.fromRGB(145,85,255)
+				KRetryStroke.Color = Color3.fromRGB(80,40,160)
+			end
+		end)
+	end
+end)
+
+-- ============================================================
+--  Tudo abaixo so executa apos a key ser validada
+-- ============================================================
+loadMainGUI = function()
 
 local ESP = {
 	Enabled=false, RGB=false, Box=false, Skeleton=false,
@@ -34,6 +387,8 @@ local combatConns = {}
 local MISC = {
 	CustomFOV=false, SpinBot=false, BigHead=false, Noclip=false,
 	WallBang=false, AntiAFK=false, TimeOfDay=false,
+	Thirdperson=false, ThirdpersonDist=8,
+	BulletTracer=false, Crosshair=false, CrosshairSize=10, CrosshairGap=4,
 	FOVValue=70, SpinSpeed=10, BigHeadScale=2, TimeValue=12,
 }
 local miscConns={}; local originalFOV=70; local originalHeads={}; local _screenGuiRef=nil
@@ -299,32 +654,140 @@ RunService.RenderStepped:Connect(function(dt)
 	if ESP.VisionCone then updateVisionCones(rgb) end
 end)
 
--- Radar 2D
-local radarBG=Drawing.new("Circle"); radarBG.Radius=70; radarBG.Color=Color3.fromRGB(10,5,20); radarBG.Filled=true; radarBG.Transparency=0.45; radarBG.NumSides=48; radarBG.Visible=false
-local radarBorder=Drawing.new("Circle"); radarBorder.Radius=70; radarBorder.Color=Color3.fromRGB(120,60,240); radarBorder.Filled=false; radarBorder.Thickness=1.5; radarBorder.Transparency=1; radarBorder.NumSides=48; radarBorder.Visible=false
-local radarSelf=Drawing.new("Circle"); radarSelf.Radius=4; radarSelf.Color=Color3.fromRGB(100,220,255); radarSelf.Filled=true; radarSelf.Transparency=1; radarSelf.NumSides=16; radarSelf.Visible=false
-local radarDots={}; local RADAR_POS=Vector2.new(80,80); local RADAR_RADIUS=70; local RADAR_RANGE=200
-local function clearRadarDot(plr) if radarDots[plr] then pcall(function() radarDots[plr]:Remove() end); radarDots[plr]=nil end end
-function updateRadar(rgb)
-	local myChar=LocalPlayer.Character; local myHRP=myChar and myChar:FindFirstChild("HumanoidRootPart")
-	local tc=ESP.RGB and rgb or Color3.fromRGB(120,60,240)
-	radarBG.Position=RADAR_POS; radarBorder.Position=RADAR_POS; radarSelf.Position=RADAR_POS
-	radarBG.Visible=true; radarBorder.Visible=true; radarSelf.Visible=true; radarBorder.Color=tc
-	if not myHRP then return end
-	local cl=Camera.CFrame.LookVector; local cy=math.atan2(cl.X,cl.Z)
-	for _,plr in ipairs(Players:GetPlayers()) do
-		if plr==LocalPlayer then continue end
-		local char=plr.Character; local hrp=char and char:FindFirstChild("HumanoidRootPart")
-		if not ESP.Enabled or not hrp or not isEnemy(plr) then clearRadarDot(plr); continue end
-		if not radarDots[plr] then local dot=Drawing.new("Circle"); dot.Radius=4; dot.Filled=true; dot.Transparency=1; dot.NumSides=12; dot.Visible=false; radarDots[plr]=dot end
-		local dx=hrp.Position.X-myHRP.Position.X; local dz=hrp.Position.Z-myHRP.Position.Z
-		local rx=dx*math.cos(cy)-dz*math.sin(cy); local ry=dx*math.sin(cy)+dz*math.cos(cy)
-		local d2=math.sqrt(rx*rx+ry*ry); local cl2=math.min(d2/RADAR_RANGE,1)
-		local fx,fy; if d2>0.01 then fx=(rx/d2)*cl2*(RADAR_RADIUS-6); fy=(ry/d2)*cl2*(RADAR_RADIUS-6) else fx,fy=0,0 end
-		local dot=radarDots[plr]; dot.Position=Vector2.new(RADAR_POS.X+fx,RADAR_POS.Y-fy); dot.Color=ESP.RGB and rgb or Color3.fromRGB(255,60,60); dot.Visible=true
+-- ============================================================
+--  RADAR 2D - GUI-based (confiavel em todos os executores)
+-- ============================================================
+local RADAR_SIZE   = 160  -- tamanho do radar em px
+local RADAR_RADIUS = 74   -- raio interno em px
+local RADAR_RANGE  = 250  -- range em studs
+local RADAR_POS_X  = 10   -- margem da borda esquerda
+local RADAR_POS_Y  = 10   -- margem do topo
+
+-- Container do radar no ScreenGui
+local RadarGui = Instance.new("Frame")
+RadarGui.Name = "PurityRadar"
+RadarGui.Size = UDim2.new(0, RADAR_SIZE, 0, RADAR_SIZE)
+RadarGui.Position = UDim2.new(0, RADAR_POS_X, 0, RADAR_POS_Y)
+RadarGui.BackgroundColor3 = Color3.fromRGB(8, 6, 14)
+RadarGui.BackgroundTransparency = 0.25
+RadarGui.BorderSizePixel = 0
+RadarGui.ZIndex = 990
+RadarGui.Visible = false
+RadarGui.Parent = ScreenGui
+Instance.new("UICorner", RadarGui).CornerRadius = UDim.new(1, 0)
+local RadarStroke = Instance.new("UIStroke", RadarGui)
+RadarStroke.Color = Color3.fromRGB(110, 50, 230)
+RadarStroke.Thickness = 1.5
+
+-- Ponto central (voce)
+local RadarSelf = Instance.new("Frame", RadarGui)
+RadarSelf.Size = UDim2.new(0, 6, 0, 6)
+RadarSelf.Position = UDim2.new(0.5, -3, 0.5, -3)
+RadarSelf.BackgroundColor3 = Color3.fromRGB(100, 220, 255)
+RadarSelf.BorderSizePixel = 0
+RadarSelf.ZIndex = 993
+Instance.new("UICorner", RadarSelf).CornerRadius = UDim.new(1, 0)
+
+-- Cruz de referencia
+local function makeRadarLine(isHorz)
+	local l = Instance.new("Frame", RadarGui)
+	if isHorz then
+		l.Size = UDim2.new(1, -20, 0, 1)
+		l.Position = UDim2.new(0, 10, 0.5, 0)
+	else
+		l.Size = UDim2.new(0, 1, 1, -20)
+		l.Position = UDim2.new(0.5, 0, 0, 10)
+	end
+	l.BackgroundColor3 = Color3.fromRGB(60, 50, 90)
+	l.BackgroundTransparency = 0.4
+	l.BorderSizePixel = 0
+	l.ZIndex = 991
+end
+makeRadarLine(true); makeRadarLine(false)
+
+-- Label "N" no topo indicando norte
+local RadarN = Instance.new("TextLabel", RadarGui)
+RadarN.Size = UDim2.new(0, 14, 0, 14)
+RadarN.Position = UDim2.new(0.5, -7, 0, 4)
+RadarN.BackgroundTransparency = 1
+RadarN.Text = "N"
+RadarN.TextColor3 = Color3.fromRGB(200, 180, 255)
+RadarN.Font = Enum.Font.GothamBold
+RadarN.TextSize = 9
+RadarN.ZIndex = 994
+
+-- Dots dos inimigos
+local radarDots = {}
+
+local function getOrMakeRadarDot(plr)
+	if radarDots[plr] and radarDots[plr].Parent then return radarDots[plr] end
+	local dot = Instance.new("Frame", RadarGui)
+	dot.Size = UDim2.new(0, 7, 0, 7)
+	dot.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+	dot.BorderSizePixel = 0
+	dot.ZIndex = 995
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+	radarDots[plr] = dot
+	return dot
+end
+
+local function clearRadarDot(plr)
+	if radarDots[plr] then
+		pcall(function() radarDots[plr]:Destroy() end)
+		radarDots[plr] = nil
 	end
 end
-local function hideRadar() radarBG.Visible=false; radarBorder.Visible=false; radarSelf.Visible=false; for _,plr in ipairs(Players:GetPlayers()) do clearRadarDot(plr) end end
+
+function updateRadar(rgb)
+	local myChar = LocalPlayer.Character
+	local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	local tc = ESP.RGB and rgb or C.accent
+	RadarStroke.Color = tc
+
+	if not myHRP then return end
+
+	local cl = Camera.CFrame.LookVector
+	local cy = math.atan2(cl.X, cl.Z)
+	local center = RADAR_SIZE / 2
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr == LocalPlayer then continue end
+		local char = plr.Character
+		local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+
+		if not hrp or not isEnemy(plr) then
+			clearRadarDot(plr); continue
+		end
+
+		local dx = hrp.Position.X - myHRP.Position.X
+		local dz = hrp.Position.Z - myHRP.Position.Z
+
+		-- Rotaciona relativo a camera
+		local rx =  dx * math.cos(cy) - dz * math.sin(cy)
+		local ry =  dx * math.sin(cy) + dz * math.cos(cy)
+
+		local dist = math.sqrt(rx*rx + ry*ry)
+		local scale = math.min(dist / RADAR_RANGE, 1)
+
+		local fx, fy
+		if dist > 0.01 then
+			fx = (rx / dist) * scale * RADAR_RADIUS
+			fy = (ry / dist) * scale * RADAR_RADIUS
+		else
+			fx, fy = 0, 0
+		end
+
+		local dot = getOrMakeRadarDot(plr)
+		dot.Position = UDim2.new(0, center + fx - 3, 0, center + fy - 3)
+		dot.BackgroundColor3 = ESP.RGB and rgb or Color3.fromRGB(255, 60, 60)
+		dot.Visible = true
+	end
+end
+
+local function hideRadar()
+	RadarGui.Visible = false
+	for _, plr in ipairs(Players:GetPlayers()) do clearRadarDot(plr) end
+end
 
 -- Vision Cone
 local VisionCones={}; local CONE_LEN=40; local CONE_ANGLE=30
@@ -386,7 +849,7 @@ local function onNameESPToggle(s) ESP.Names=s; applyNameVisibility() end
 local function onDistanceToggle(s) ESP.Distance=s; applyDistVisibility() end
 local function onHealthBarToggle(s) ESP.HealthBar=s; if not s then for _,p in ipairs(Players:GetPlayers()) do clearHealthBar(p) end end end
 local function onTracelinesToggle(s) ESP.Tracers=s; if not s then for _,p in ipairs(Players:GetPlayers()) do clearTracer(p) end end end
-local function onRadarToggle(s) ESP.Radar=s; if not s then hideRadar() end end
+local function onRadarToggle(s) ESP.Radar=s; if s then RadarGui.Visible=true else hideRadar() end end
 local function onVisionConeToggle(s) ESP.VisionCone=s; if not s then for _,p in ipairs(Players:GetPlayers()) do clearVisionCone(p) end end end
 
 -- Callbacks Aimbot
@@ -696,7 +1159,55 @@ local function onTimeOfDayToggle(s) MISC.TimeOfDay=s; if s then Lighting.ClockTi
 local function onTimeOfDayChange(v) MISC.TimeValue=v; if MISC.TimeOfDay then Lighting.ClockTime=v end end
 
 -- Config/Temas
-local CONFIG={Notifications=true,Opacity=1.0,Theme="roxo"}
+local CONFIG={Notifications=true,Opacity=1.0,Theme="roxo",Watermark=true,Particles=true}
+
+-- ── Watermark (FPS + Ping + Versao) ──
+local WatermarkFrame=nil; local WatermarkStroke=nil; local WatermarkDot=nil
+task.defer(function()
+	WatermarkFrame=Instance.new("Frame",ScreenGui)
+	WatermarkFrame.Size=UDim2.new(0,210,0,28)
+	WatermarkFrame.Position=UDim2.new(1,-218,0,8)
+	WatermarkFrame.BackgroundColor3=Color3.fromRGB(13,13,18)
+	WatermarkFrame.BorderSizePixel=0
+	WatermarkFrame.ZIndex=999
+	WatermarkFrame.Visible=CONFIG.Watermark
+	Instance.new("UICorner",WatermarkFrame).CornerRadius=UDim.new(0,7)
+	WatermarkStroke=Instance.new("UIStroke",WatermarkFrame)
+	WatermarkStroke.Color=Color3.fromRGB(110,50,230)
+	WatermarkStroke.Thickness=1
+
+	WatermarkDot=Instance.new("Frame",WatermarkFrame)
+	WatermarkDot.Size=UDim2.new(0,6,0,6)
+	WatermarkDot.Position=UDim2.new(0,8,0.5,-3)
+	WatermarkDot.BackgroundColor3=Color3.fromRGB(145,85,255)
+	WatermarkDot.BorderSizePixel=0
+	Instance.new("UICorner",WatermarkDot).CornerRadius=UDim.new(1,0)
+
+	local wLbl=Instance.new("TextLabel",WatermarkFrame)
+	wLbl.Name="WatermarkLbl"
+	wLbl.Size=UDim2.new(1,-18,1,0)
+	wLbl.Position=UDim2.new(0,18,0,0)
+	wLbl.BackgroundTransparency=1
+	wLbl.Text="Purity v7.0"
+	wLbl.TextColor3=Color3.fromRGB(238,232,255)
+	wLbl.Font=Enum.Font.GothamBold
+	wLbl.TextSize=11
+	wLbl.TextXAlignment=Enum.TextXAlignment.Left
+
+	-- Atualiza FPS e ping a cada segundo
+	local lastTime=tick()
+	local frameCount=0
+	RunService.RenderStepped:Connect(function()
+		frameCount=frameCount+1
+		local now=tick()
+		if now-lastTime>=1 then
+			local fps=math.floor(frameCount/(now-lastTime))
+			local ping=math.floor(LocalPlayer:GetNetworkPing()*1000)
+			wLbl.Text=string.format("Purity v7.0  |  %d FPS  |  %dms",fps,ping)
+			frameCount=0; lastTime=now
+		end
+	end)
+end)
 local THEMES={
 	roxo     ={border=Color3.fromRGB(110,30,200),neon=Color3.fromRGB(155,40,240),neonBright=Color3.fromRGB(190,70,255)},
 	azul     ={border=Color3.fromRGB(30,80,220), neon=Color3.fromRGB(40,120,255),neonBright=Color3.fromRGB(80,160,255)},
@@ -735,6 +1246,94 @@ Main.Position=UDim2.new(0.5,-WIN_W/2,0.5,-WIN_H/2); Main.BackgroundColor3=C.wind
 Main.ZIndex=2; Main.ClipsDescendants=true; Main.Parent=ScreenGui
 Instance.new("UICorner",Main).CornerRadius=UDim.new(0,12)
 local MainStroke=Instance.new("UIStroke",Main); MainStroke.Color=C.border; MainStroke.Thickness=1.2
+
+-- ============================================================
+--  PARTICULAS DE FUNDO v3 - Estrelinhas
+--  Contidas dentro do menu usando clipping por posicao absoluta.
+-- ============================================================
+local PARTICLE_COUNT = 35
+local particles = {}
+local particleConn = nil
+
+local WIN_W_P = 620
+local WIN_H_P = 430
+
+local function createParticle()
+	-- Tamanho de estrela: 1 a 3px
+	local size = math.random(1, 3)
+	local p = Instance.new("Frame", ScreenGui)
+	p.Size = UDim2.new(0, size, 0, size)
+	p.BackgroundTransparency = math.random(10, 45) / 100
+	p.BackgroundColor3 = C.accentLight
+	p.BorderSizePixel = 0
+	p.ZIndex = 998
+	p.Visible = true
+	Instance.new("UICorner", p).CornerRadius = UDim.new(1, 0)
+
+	local data = {
+		frame = p,
+		x     = math.random(2, WIN_W_P - 4),
+		y     = math.random(2, WIN_H_P - 4),
+		vx    = (math.random() - 0.5) * 22,
+		vy    = (math.random() - 0.5) * 22,
+		size  = size,
+	}
+	return data
+end
+
+local function startParticles()
+	if particleConn then return end
+	particleConn = RunService.RenderStepped:Connect(function(dt)
+		if not CONFIG.Particles then return end
+		local winX = Main.AbsolutePosition.X
+		local winY = Main.AbsolutePosition.Y
+		local col  = C.accentLight
+		for _, d in ipairs(particles) do
+			d.x = d.x + d.vx * dt
+			d.y = d.y + d.vy * dt
+
+			-- Rebate nas bordas INTERNAS do menu
+			if d.x < 2 then
+				d.x = 2; d.vx = math.abs(d.vx)
+			elseif d.x > WIN_W_P - d.size - 2 then
+				d.x = WIN_W_P - d.size - 2; d.vx = -math.abs(d.vx)
+			end
+			if d.y < 2 then
+				d.y = 2; d.vy = math.abs(d.vy)
+			elseif d.y > WIN_H_P - d.size - 2 then
+				d.y = WIN_H_P - d.size - 2; d.vy = -math.abs(d.vy)
+			end
+
+			pcall(function()
+				d.frame.Position = UDim2.new(0, winX + d.x, 0, winY + d.y)
+				d.frame.BackgroundColor3 = col
+			end)
+		end
+	end)
+end
+
+local function stopParticles()
+	if particleConn then particleConn:Disconnect(); particleConn = nil end
+	for _, d in ipairs(particles) do pcall(function() d.frame.Visible = false end) end
+end
+
+local function setParticlesVisible(v)
+	for _, d in ipairs(particles) do pcall(function() d.frame.Visible = v end) end
+end
+
+task.defer(function()
+	for i = 1, PARTICLE_COUNT do
+		particles[i] = createParticle()
+	end
+	-- Posiciona todas antes de iniciar o loop
+	local winX = Main.AbsolutePosition.X
+	local winY = Main.AbsolutePosition.Y
+	for _, d in ipairs(particles) do
+		d.frame.Position = UDim2.new(0, winX + d.x, 0, winY + d.y)
+	end
+	startParticles()
+end)
+
 
 -- Header
 local Header=Instance.new("Frame"); Header.Size=UDim2.new(1,0,0,46); Header.BackgroundColor3=C.header
@@ -1140,7 +1739,6 @@ local function buildVisuals()
 	toggleSetters["ESP.HealthBar"] = makeToggle(p,"Health Bar",    "Barra de vida lateral",                9,onHealthBarToggle)
 	toggleSetters["ESP.Tracers"]   = makeToggle(p,"Tracelines",    "Linha do centro da tela ao alvo",      10,onTracelinesToggle)
 	makeSpacer(p,8,11); makeGroupHeader(p,"Extras",12); makeSpacer(p,3,13)
-	toggleSetters["ESP.Radar"]     = makeToggle(p,"Radar 2D",      "Minimapa com pontos dos inimigos",     14,onRadarToggle)
 	toggleSetters["ESP.VisionCone"]= makeToggle(p,"Cone de Visao", "Triangulo da direcao do inimigo",      15,onVisionConeToggle)
 end
 buildVisuals()
@@ -1171,252 +1769,308 @@ buildCombat()
 
 local function buildMisc()
 	local p=contentPages["Misc"]
+
+	-- Camera
 	makeGroupHeader(p,"Camera",1); makeSpacer(p,3,2)
-	toggleSetters["MISC.CustomFOV"] = makeToggle(p,"Custom FOV",    "Controla o campo de visao",            3,onCustomFOVToggle)
-	makeSlider(p,"FOV",          50,120,70,"graus",                       4,onFOVValueChange)
-	makeSpacer(p,8,5); makeGroupHeader(p,"Personagem",6); makeSpacer(p,3,7)
-	toggleSetters["MISC.Noclip"]   = makeToggle(p,"Noclip",        "Atravessa paredes",                    8,onNoclipToggle)
-	toggleSetters["MISC.SpinBot"]  = makeToggle(p,"Spin Bot",      "Gira o personagem",                    9,onSpinBotToggle)
-	makeSlider(p,"Spin Speed",   1,20,10," rot/s",                        10,onSpinSpeedChange)
-	makeSpacer(p,8,11); makeGroupHeader(p,"Inimigos",12); makeSpacer(p,3,13)
-	toggleSetters["MISC.BigHead"]  = makeToggle(p,"Big Head",      "Aumenta a cabeca dos inimigos",        14,onBigHeadToggle)
-	makeSlider(p,"Head Scale",   1,4,2,"x",                               15,onBigHeadScaleChange)
-	makeSpacer(p,8,16); makeGroupHeader(p,"Utilidade",17); makeSpacer(p,3,18)
-	toggleSetters["MISC.WallBang"] = makeToggle(p,"Wall Bang",     "Bala atravessa paredes",               19,onWallBangToggle)
-	toggleSetters["MISC.AntiAFK"]  = makeToggle(p,"Anti AFK",      "Evita kick por inatividade",           20,onAntiAFKToggle)
-	toggleSetters["MISC.TimeOfDay"]= makeToggle(p,"Time of Day",   "Controla a hora do dia",               21,onTimeOfDayToggle)
-	makeSlider(p,"Hora do Dia",  0,24,12,"h",                             22,onTimeOfDayChange)
-	makeSpacer(p,8,23); makeGroupHeader(p,"Keybinds",24); makeSpacer(p,3,25)
+	toggleSetters["MISC.CustomFOV"] = makeToggle(p,"Custom FOV","Controla o campo de visao",3,onCustomFOVToggle)
+	makeSlider(p,"FOV",50,120,70,"graus",4,onFOVValueChange)
 
-	local function makeKeybindRow(parent,label,desc,keyId,order)
-		local Row=Instance.new("Frame",parent)
-		Row.Size=UDim2.new(1,0,0,52); Row.BackgroundColor3=C.card; Row.BorderSizePixel=0; Row.LayoutOrder=order
-		Instance.new("UICorner",Row).CornerRadius=UDim.new(0,7)
-		local Ind=Instance.new("Frame",Row); Ind.Size=UDim2.new(0,3,0,20); Ind.Position=UDim2.new(0,0,0.5,-10); Ind.BackgroundColor3=C.accent; Ind.BorderSizePixel=0; Instance.new("UICorner",Ind).CornerRadius=UDim.new(1,0)
-		local Lbl=Instance.new("TextLabel",Row); Lbl.Size=UDim2.new(1,-16,0,16); Lbl.Position=UDim2.new(0,13,0,6); Lbl.BackgroundTransparency=1; Lbl.Text=label; Lbl.TextColor3=C.textSec; Lbl.Font=Enum.Font.GothamBold; Lbl.TextSize=12; Lbl.TextXAlignment=Enum.TextXAlignment.Left
-		local Desc=Instance.new("TextLabel",Row); Desc.Size=UDim2.new(1,-16,0,11); Desc.Position=UDim2.new(0,13,0,23); Desc.BackgroundTransparency=1; Desc.Text=desc; Desc.TextColor3=C.textDim; Desc.Font=Enum.Font.Gotham; Desc.TextSize=9; Desc.TextXAlignment=Enum.TextXAlignment.Left
-		local KeyLbl=Instance.new("TextLabel",Row); KeyLbl.Size=UDim2.new(0,110,0,22); KeyLbl.Position=UDim2.new(1,-230,0.5,-11); KeyLbl.BackgroundColor3=Color3.fromRGB(18,14,30); KeyLbl.Text=KEYBINDS[keyId] and tostring(KEYBINDS[keyId]):gsub("Enum.KeyCode.","") or "-- NENHUMA --"; KeyLbl.TextColor3=C.accentLight; KeyLbl.Font=Enum.Font.GothamBold; KeyLbl.TextSize=10; KeyLbl.BorderSizePixel=0; KeyLbl.ZIndex=4
-		Instance.new("UICorner",KeyLbl).CornerRadius=UDim.new(0,5); Instance.new("UIStroke",KeyLbl).Color=C.borderLight
-		_keyBindLabels[keyId]=KeyLbl
-		local SetBtn=Instance.new("TextButton",Row); SetBtn.Size=UDim2.new(0,68,0,22); SetBtn.Position=UDim2.new(1,-76,0.5,-11); SetBtn.BackgroundColor3=C.accent; SetBtn.BorderSizePixel=0; SetBtn.Text="DEFINIR"; SetBtn.TextColor3=C.white; SetBtn.Font=Enum.Font.GothamBold; SetBtn.TextSize=10; SetBtn.ZIndex=5
-		Instance.new("UICorner",SetBtn).CornerRadius=UDim.new(0,5)
-		SetBtn.MouseButton1Click:Connect(function()
-			if waitingForKey==keyId then
-				waitingForKey=nil
-				SetBtn.BackgroundColor3=C.accent; SetBtn.Text="DEFINIR"
-			else
-				waitingForKey=keyId
-				SetBtn.BackgroundColor3=C.accentLight; SetBtn.Text="AGUARD..."
-				showToast("Pressione a tecla desejada (ESC = remover)",true)
-				task.delay(5,function()
-					if waitingForKey==keyId then
-						waitingForKey=nil
-						SetBtn.BackgroundColor3=C.accent; SetBtn.Text="DEFINIR"
-					end
+	-- Thirdperson
+	makeSpacer(p,8,5); makeGroupHeader(p,"Visao",6); makeSpacer(p,3,7)
+	local tpConn=nil
+	toggleSetters["MISC.Thirdperson"] = makeToggle(p,"Thirdperson","Visao em terceira pessoa",8,function(s)
+		MISC.Thirdperson=s
+		if s then
+			tpConn=RunService.RenderStepped:Connect(function()
+				if not MISC.Thirdperson then return end
+				local char=LocalPlayer.Character
+				local hrp=char and char:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					Camera.CFrame=CFrame.new(hrp.Position + Vector3.new(0,4,0) + Camera.CFrame.LookVector*-MISC.ThirdpersonDist, hrp.Position + Vector3.new(0,2,0))
+					Camera.CameraType=Enum.CameraType.Scriptable
+				end
+			end)
+		else
+			if tpConn then tpConn:Disconnect(); tpConn=nil end
+			Camera.CameraType=Enum.CameraType.Custom
+		end
+	end)
+	makeSlider(p,"Distancia TP",3,20,8,"m",9,function(v) MISC.ThirdpersonDist=v end)
+
+	-- Personagem
+	makeSpacer(p,8,10); makeGroupHeader(p,"Personagem",11); makeSpacer(p,3,12)
+	toggleSetters["MISC.Noclip"]   = makeToggle(p,"Noclip",   "Atravessa paredes",  13,onNoclipToggle)
+	toggleSetters["MISC.SpinBot"]  = makeToggle(p,"Spin Bot", "Gira o personagem",  14,onSpinBotToggle)
+	makeSlider(p,"Spin Speed",1,20,10," rot/s",15,onSpinSpeedChange)
+
+	-- Inimigos
+	makeSpacer(p,8,16); makeGroupHeader(p,"Inimigos",17); makeSpacer(p,3,18)
+	toggleSetters["MISC.BigHead"]  = makeToggle(p,"Big Head","Aumenta a cabeca dos inimigos",19,onBigHeadToggle)
+	makeSlider(p,"Head Scale",1,4,2,"x",20,onBigHeadScaleChange)
+
+	-- Tracer de bala
+	makeSpacer(p,8,21); makeGroupHeader(p,"Visual Extra",22); makeSpacer(p,3,23)
+	local bulletConns={}
+	toggleSetters["MISC.BulletTracer"] = makeToggle(p,"Bullet Tracer","Mostra o rastro das suas balas",24,function(s)
+		MISC.BulletTracer=s
+		for _,c in pairs(bulletConns) do pcall(function() c:Disconnect() end) end
+		bulletConns={}
+		if not s then return end
+		local char=LocalPlayer.Character
+		local function hookTool(tool)
+			if not tool then return end
+			local fireConn=tool.ChildAdded:Connect(function(obj)
+				if obj.Name~="Bullet" and obj.Name~="Shell" and not obj:IsA("BasePart") then return end
+				pcall(function()
+					local line=Drawing.new("Line")
+					line.Thickness=1.5; line.Color=C.accentLight; line.Transparency=1
+					local startPos=obj.Position
+					local moved=obj:GetPropertyChangedSignal("Position"):Connect(function()
+						local v1,_=Camera:WorldToViewportPoint(startPos)
+						local v2,_=Camera:WorldToViewportPoint(obj.Position)
+						line.From=Vector2.new(v1.X,v1.Y); line.To=Vector2.new(v2.X,v2.Y); line.Visible=true
+					end)
+					task.delay(0.5,function() line:Remove(); moved:Disconnect() end)
 				end)
-			end
-		end)
-		SetBtn.MouseEnter:Connect(function() if waitingForKey~=keyId then TweenService:Create(SetBtn,TweenInfo.new(0.1),{BackgroundColor3=C.accentLight}):Play() end end)
-		SetBtn.MouseLeave:Connect(function() if waitingForKey~=keyId then TweenService:Create(SetBtn,TweenInfo.new(0.1),{BackgroundColor3=C.accent}):Play() end end)
-		Row.MouseEnter:Connect(function() TweenService:Create(Row,TweenInfo.new(0.1),{BackgroundColor3=C.cardHover}):Play() end)
-		Row.MouseLeave:Connect(function() TweenService:Create(Row,TweenInfo.new(0.1),{BackgroundColor3=C.card}):Play() end)
-	end
+			end)
+			table.insert(bulletConns,fireConn)
+		end
+		if char then hookTool(char:FindFirstChildOfClass("Tool")) end
+		table.insert(bulletConns, LocalPlayer.CharacterAdded:Connect(function(c)
+			c.ChildAdded:Connect(function(ch) if ch:IsA("Tool") then hookTool(ch) end end)
+		end))
+	end)
 
-	makeKeybindRow(p,"Tecla — ESP","Ativa/desativa ESP em jogo","ESPKey",26)
-	makeKeybindRow(p,"Tecla — Big Head","Ativa/desativa Big Head em jogo","BigHeadKey",27)
+	-- Crosshair customizavel
+	local crosshairLines={}
+	local crosshairVisible=false
+	local function updateCrosshair()
+		if not MISC.Crosshair then
+			for _,l in pairs(crosshairLines) do pcall(function() l:Remove() end) end
+			crosshairLines={}; return
+		end
+		local vp=Camera.ViewportSize
+		local cx,cy=vp.X/2,vp.Y/2
+		local sz=MISC.CrosshairSize or 10
+		local gap=MISC.CrosshairGap or 4
+		local col=C.accentLight
+		if #crosshairLines==0 then
+			for i=1,4 do local l=Drawing.new("Line"); l.Thickness=1.5; l.Color=col; l.Transparency=1; l.Visible=true; crosshairLines[i]=l end
+		end
+		-- left, right, up, down
+		crosshairLines[1].From=Vector2.new(cx-gap-sz,cy); crosshairLines[1].To=Vector2.new(cx-gap,cy)
+		crosshairLines[2].From=Vector2.new(cx+gap,cy);    crosshairLines[2].To=Vector2.new(cx+gap+sz,cy)
+		crosshairLines[3].From=Vector2.new(cx,cy-gap-sz); crosshairLines[3].To=Vector2.new(cx,cy-gap)
+		crosshairLines[4].From=Vector2.new(cx,cy+gap);    crosshairLines[4].To=Vector2.new(cx,cy+gap+sz)
+		for _,l in pairs(crosshairLines) do l.Color=col end
+	end
+	toggleSetters["MISC.Crosshair"] = makeToggle(p,"Crosshair Custom","Mira personalizada no centro",25,function(s)
+		MISC.Crosshair=s
+		if not s then for _,l in pairs(crosshairLines) do pcall(function() l:Remove() end) end; crosshairLines={} end
+	end)
+	makeSlider(p,"Tamanho Mira",4,30,10,"px",26,function(v) MISC.CrosshairSize=v end)
+	makeSlider(p,"Gap Mira",   1,20,4, "px",27,function(v) MISC.CrosshairGap=v end)
+	RunService.RenderStepped:Connect(function() if MISC.Crosshair then updateCrosshair() end end)
+
+	-- Utilidade
+	makeSpacer(p,8,28); makeGroupHeader(p,"Utilidade",29); makeSpacer(p,3,30)
+	toggleSetters["MISC.WallBang"]  = makeToggle(p,"Wall Bang",  "Bala atravessa paredes",           31,onWallBangToggle)
+	toggleSetters["MISC.AntiAFK"]   = makeToggle(p,"Anti AFK",   "Evita kick por inatividade",       32,onAntiAFKToggle)
+	toggleSetters["MISC.TimeOfDay"] = makeToggle(p,"Time of Day","Controla a hora do dia",           33,onTimeOfDayToggle)
+	makeSlider(p,"Hora do Dia",0,24,12,"h",34,onTimeOfDayChange)
+
+	-- Radar
+	makeSpacer(p,8,35); makeGroupHeader(p,"Radar",36); makeSpacer(p,3,37)
+	toggleSetters["ESP.Radar"] = makeToggle(p,"Radar 2D","Minimapa com posicao dos inimigos",38,onRadarToggle)
+	makeSlider(p,"Range Radar",50,600,250,"m",39,function(v) RADAR_RANGE=v end)
+	makeSlider(p,"Tamanho Radar",100,240,160,"px",40,function(v)
+		RADAR_SIZE=v; RADAR_RADIUS=v/2-6
+		RadarGui.Size=UDim2.new(0,v,0,v)
+	end)
 end
 buildMisc()
 
 local function buildConfig()
 	local p=contentPages["Config"]
 
+	-- ── Interface ──
 	makeGroupHeader(p,"Interface",1); makeSpacer(p,3,2)
 	toggleSetters["CONFIG.Notifications"] = makeToggle(p,"Notificacoes","Toast ao ativar/desativar funcoes",3,function(s) CONFIG.Notifications=s end)
-	makeSpacer(p,6,4)
-	makeSlider(p,"Opacidade",20,100,100,"%",5,function(v)
+	toggleSetters["CONFIG.Particles"] = makeToggle(p,"Particulas","Estrelinhas animadas no fundo",4,function(s)
+		CONFIG.Particles=s
+		if s then setParticlesVisible(true); startParticles()
+		else stopParticles() end
+	end)
+	toggleSetters["CONFIG.Watermark"] = makeToggle(p,"Watermark","FPS, ping e versao no canto da tela",5,function(s)
+		CONFIG.Watermark=s
+		if WatermarkFrame then WatermarkFrame.Visible=s end
+	end)
+	makeSpacer(p,6,6)
+	makeSlider(p,"Opacidade",20,100,100,"%",7,function(v)
 		CONFIG.Opacity=v/100; Main.BackgroundTransparency=1-(v/100)
 	end)
-	makeSpacer(p,10,6); makeGroupHeader(p,"Tema de Cores",7); makeSpacer(p,3,8)
+	makeSpacer(p,10,8); makeGroupHeader(p,"Tema de Cores",9); makeSpacer(p,3,10)
 
 	local function applyTheme(name)
-		CONFIG.Theme=name; local t=THEMES[name]; if not t then return end
-		C.accent=t.border; C.accentLight=t.neonBright
-		MainStroke.Color=t.border; HDivider.BackgroundColor3=t.border; fovCircle.Color=t.neonBright
+		CONFIG.Theme=name
+		local t=THEMES[name]; if not t then return end
+
+		local oldAccent      = C.accent
+		local oldAccentLight = C.accentLight
+		local oldAccentGlow  = C.accentGlow
+
+		local h,s,v = Color3.toHSV(t.neon)
+		local newGlow = Color3.fromHSV(h, s, math.max(0, v - 0.25))
+
+		C.accent      = t.border
+		C.accentLight = t.neonBright
+		C.accentGlow  = newGlow
+
+		for _, obj in ipairs(ScreenGui:GetDescendants()) do
+			pcall(function()
+				if obj:IsA("Frame") or obj:IsA("TextButton") or obj:IsA("TextLabel") or obj:IsA("ImageLabel") then
+					if obj.BackgroundColor3 == oldAccent      then obj.BackgroundColor3 = C.accent      end
+					if obj.BackgroundColor3 == oldAccentLight then obj.BackgroundColor3 = C.accentLight end
+					if obj.BackgroundColor3 == oldAccentGlow  then obj.BackgroundColor3 = C.accentGlow  end
+				end
+				if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+					if obj.TextColor3 == oldAccent      then obj.TextColor3 = C.accent      end
+					if obj.TextColor3 == oldAccentLight then obj.TextColor3 = C.accentLight end
+				end
+				if obj:IsA("UIStroke") then
+					if obj.Color == oldAccent      then obj.Color = C.accent      end
+					if obj.Color == oldAccentLight then obj.Color = C.accentLight end
+				end
+				if obj:IsA("ScrollingFrame") then
+					if obj.ScrollBarImageColor3 == oldAccent then obj.ScrollBarImageColor3 = C.accent end
+				end
+			end)
+		end
+
+		MainStroke.Color          = C.accent
+		HDivider.BackgroundColor3 = C.accent
+		LogoDot.BackgroundColor3  = C.accentLight
+		VerBadge.BackgroundColor3 = C.accentGlow
+		VerBadge.TextColor3       = C.accentLight
+		fovCircle.Color           = C.accentLight
+		for _, d in ipairs(particles) do
+			pcall(function() d.frame.BackgroundColor3 = C.accentLight end)
+		end
+		if WatermarkFrame then
+			WatermarkStroke.Color = C.accent
+			WatermarkDot.BackgroundColor3 = C.accentLight
+		end
 	end
 
-	makeDropdown(p,"Tema Ativo",{"Roxo","Azul","Vermelho","Verde","Laranja","Ciano","Rosa","Branco"},1,9,function(opt)
+	makeDropdown(p,"Tema Ativo",{"Roxo","Azul","Vermelho","Verde","Laranja","Ciano","Rosa","Branco"},1,11,function(opt)
 		applyTheme(string.lower(opt))
 	end)
 
-	makeSpacer(p,10,10); makeGroupHeader(p,"Configuracao",11); makeSpacer(p,3,12)
+	-- ── Perfis de Config ──
+	makeSpacer(p,10,12); makeGroupHeader(p,"Perfis de Configuracao",13); makeSpacer(p,3,14)
 
-	local function serializeConfig()
-		local nl="\n"
-		local function val(v)
-			if type(v)=="boolean" then return v and "true" or "false"
-			elseif type(v)=="number" then return tostring(v)
-			elseif type(v)=="string" then return '"'..v..'"' end
-			return "null"
-		end
-		local sections={
-			{name="esp",tbl=ESP},{name="aimbot",tbl=AIMBOT},
-			{name="combat",tbl=COMBAT},{name="misc",tbl=MISC},
-			{name="config",tbl=CONFIG},
+	local PROFILES = {"Rage","Legit","Visual Only"}
+	local profileData = {}  -- salva config por perfil
+
+	local function captureConfig()
+		return {
+			ESP=table.clone and table.clone(ESP) or {
+				Enabled=ESP.Enabled,RGB=ESP.RGB,Box=ESP.Box,Skeleton=ESP.Skeleton,
+				Names=ESP.Names,Distance=ESP.Distance,HealthBar=ESP.HealthBar,
+				Tracers=ESP.Tracers,Radar=ESP.Radar,VisionCone=ESP.VisionCone,
+			},
+			AIMBOT={
+				Enabled=AIMBOT.Enabled,Silent=AIMBOT.Silent,Prediction=AIMBOT.Prediction,
+				FOVCircle=AIMBOT.FOVCircle,TeamCheck=AIMBOT.TeamCheck,VisCheck=AIMBOT.VisCheck,
+				AutoShoot=AIMBOT.AutoShoot,FOVRadius=AIMBOT.FOVRadius,Smoothness=AIMBOT.Smoothness,
+				MaxDist=AIMBOT.MaxDist,TargetPart=AIMBOT.TargetPart,
+			},
+			MISC={
+				BigHead=MISC.BigHead,BigHeadScale=MISC.BigHeadScale,
+				SpinBot=MISC.SpinBot,Noclip=MISC.Noclip,
+			},
 		}
-		local out={"{"..nl}
-		for si,sec in ipairs(sections) do
-			table.insert(out,'  "'..sec.name..'": {'..nl)
-			local keys={}
-			for k in pairs(sec.tbl) do
-				if type(sec.tbl[k])~="function" and type(sec.tbl[k])~="userdata" then
-					table.insert(keys,k)
-				end
-			end
-			table.sort(keys)
-			for i,k in ipairs(keys) do
-				local comma=i<#keys and "," or ""
-				table.insert(out,'    "'..k..'": '..val(sec.tbl[k])..comma..nl)
-			end
-			table.insert(out,"  }"..(si<#sections and "," or "")..nl)
-		end
-		table.insert(out,"}")
-		return table.concat(out)
 	end
 
-	local SaveWrap=Instance.new("Frame",p); SaveWrap.Size=UDim2.new(1,0,0,44); SaveWrap.BackgroundColor3=C.card; SaveWrap.BorderSizePixel=0; SaveWrap.LayoutOrder=13
-	Instance.new("UICorner",SaveWrap).CornerRadius=UDim.new(0,7)
-	local SaveInd=Instance.new("Frame",SaveWrap); SaveInd.Size=UDim2.new(0,3,0,18); SaveInd.Position=UDim2.new(0,0,0.5,-9); SaveInd.BackgroundColor3=C.accent; SaveInd.BorderSizePixel=0; Instance.new("UICorner",SaveInd).CornerRadius=UDim.new(1,0)
-	local SaveLbl=Instance.new("TextLabel",SaveWrap); SaveLbl.Size=UDim2.new(1,-120,1,0); SaveLbl.Position=UDim2.new(0,13,0,0); SaveLbl.BackgroundTransparency=1; SaveLbl.Text="Salvar Config"; SaveLbl.TextColor3=C.textSec; SaveLbl.Font=Enum.Font.GothamBold; SaveLbl.TextSize=13; SaveLbl.TextXAlignment=Enum.TextXAlignment.Left
-	local SaveDesc=Instance.new("TextLabel",SaveWrap); SaveDesc.Size=UDim2.new(1,-120,0,12); SaveDesc.Position=UDim2.new(0,13,1,-18); SaveDesc.BackgroundTransparency=1; SaveDesc.Text="Copia o JSON da config pro clipboard"; SaveDesc.TextColor3=C.textDim; SaveDesc.Font=Enum.Font.Gotham; SaveDesc.TextSize=9; SaveDesc.TextXAlignment=Enum.TextXAlignment.Left
-	local SaveBtn=Instance.new("TextButton",SaveWrap); SaveBtn.Size=UDim2.new(0,90,0,26); SaveBtn.Position=UDim2.new(1,-98,0.5,-13); SaveBtn.BackgroundColor3=C.accent; SaveBtn.BorderSizePixel=0; SaveBtn.Text="COPIAR"; SaveBtn.TextColor3=C.white; SaveBtn.Font=Enum.Font.GothamBold; SaveBtn.TextSize=11; SaveBtn.ZIndex=5
-	Instance.new("UICorner",SaveBtn).CornerRadius=UDim.new(0,6)
-	SaveBtn.MouseButton1Click:Connect(function()
-		local ok=pcall(function() setclipboard(serializeConfig()) end)
-		if ok then
-			SaveBtn.BackgroundColor3=C.green; SaveBtn.Text="COPIADO!"
-			task.delay(1.5,function() SaveBtn.BackgroundColor3=C.accent; SaveBtn.Text="COPIAR" end)
-			showToast("JSON copiado! Cole num .txt e salve como .json",true)
-		else
-			SaveBtn.BackgroundColor3=C.red; SaveBtn.Text="ERRO!"
-			task.delay(1.5,function() SaveBtn.BackgroundColor3=C.accent; SaveBtn.Text="COPIAR" end)
-			showToast("Executor nao suporta clipboard.",false)
-		end
-	end)
-	SaveBtn.MouseEnter:Connect(function() TweenService:Create(SaveBtn,TweenInfo.new(0.1),{BackgroundColor3=C.accentLight}):Play() end)
-	SaveBtn.MouseLeave:Connect(function() TweenService:Create(SaveBtn,TweenInfo.new(0.1),{BackgroundColor3=C.accent}):Play() end)
+	local profileWrap=Instance.new("Frame",p); profileWrap.Size=UDim2.new(1,0,0,80); profileWrap.BackgroundColor3=C.card; profileWrap.BorderSizePixel=0; profileWrap.LayoutOrder=15; Instance.new("UICorner",profileWrap).CornerRadius=UDim.new(0,7)
+	local profPad=Instance.new("UIPadding",profileWrap); profPad.PaddingLeft=UDim.new(0,10); profPad.PaddingRight=UDim.new(0,10); profPad.PaddingTop=UDim.new(0,8); profPad.PaddingBottom=UDim.new(0,8)
+	local profLayout=Instance.new("UIListLayout",profileWrap); profLayout.FillDirection=Enum.FillDirection.Horizontal; profLayout.Padding=UDim.new(0,8); profLayout.SortOrder=Enum.SortOrder.LayoutOrder
 
-	makeSpacer(p,5,14)
+	for i,name in ipairs(PROFILES) do
+		local col=Instance.new("Frame",profileWrap); col.Size=UDim2.new(0,90,1,0); col.BackgroundTransparency=1; col.LayoutOrder=i
+		local colLayout=Instance.new("UIListLayout",col); colLayout.Padding=UDim.new(0,5); colLayout.SortOrder=Enum.SortOrder.LayoutOrder
 
-	local loadOpen = false
-	local LoadWrap=Instance.new("Frame",p); LoadWrap.Size=UDim2.new(1,0,0,44); LoadWrap.BackgroundColor3=C.card; LoadWrap.BorderSizePixel=0; LoadWrap.LayoutOrder=15; LoadWrap.ClipsDescendants=true
-	Instance.new("UICorner",LoadWrap).CornerRadius=UDim.new(0,7)
-	local LoadInd=Instance.new("Frame",LoadWrap); LoadInd.Size=UDim2.new(0,3,0,18); LoadInd.Position=UDim2.new(0,0,0.5,-9); LoadInd.BackgroundColor3=C.accentLight; LoadInd.BorderSizePixel=0; Instance.new("UICorner",LoadInd).CornerRadius=UDim.new(1,0)
-	local LoadLbl=Instance.new("TextLabel",LoadWrap); LoadLbl.Size=UDim2.new(1,-120,1,0); LoadLbl.Position=UDim2.new(0,13,0,0); LoadLbl.BackgroundTransparency=1; LoadLbl.Text="Carregar Config"; LoadLbl.TextColor3=C.textSec; LoadLbl.Font=Enum.Font.GothamBold; LoadLbl.TextSize=13; LoadLbl.TextXAlignment=Enum.TextXAlignment.Left
-	local LoadDesc=Instance.new("TextLabel",LoadWrap); LoadDesc.Size=UDim2.new(1,-120,0,12); LoadDesc.Position=UDim2.new(0,13,1,-18); LoadDesc.BackgroundTransparency=1; LoadDesc.Text="Clique em COLAR para expandir a caixa"; LoadDesc.TextColor3=C.textDim; LoadDesc.Font=Enum.Font.Gotham; LoadDesc.TextSize=9; LoadDesc.TextXAlignment=Enum.TextXAlignment.Left
-	local LoadBtn=Instance.new("TextButton",LoadWrap); LoadBtn.Size=UDim2.new(0,90,0,26); LoadBtn.Position=UDim2.new(1,-98,0.5,-13); LoadBtn.BackgroundColor3=Color3.fromRGB(30,26,50); LoadBtn.BorderSizePixel=0; LoadBtn.Text="COLAR"; LoadBtn.TextColor3=C.accentLight; LoadBtn.Font=Enum.Font.GothamBold; LoadBtn.TextSize=11; LoadBtn.ZIndex=5
-	Instance.new("UICorner",LoadBtn).CornerRadius=UDim.new(0,6)
-	Instance.new("UIStroke",LoadBtn).Color=C.accent
+		local nameLbl=Instance.new("TextLabel",col); nameLbl.Size=UDim2.new(1,0,0,16); nameLbl.BackgroundTransparency=1; nameLbl.Text=name; nameLbl.TextColor3=C.textSec; nameLbl.Font=Enum.Font.GothamBold; nameLbl.TextSize=10; nameLbl.LayoutOrder=1
 
-	local BoxBG=Instance.new("Frame",LoadWrap); BoxBG.Size=UDim2.new(1,-16,0,72); BoxBG.Position=UDim2.new(0,8,0,50); BoxBG.BackgroundColor3=Color3.fromRGB(12,10,20); BoxBG.BorderSizePixel=0
-	Instance.new("UICorner",BoxBG).CornerRadius=UDim.new(0,6)
-	Instance.new("UIStroke",BoxBG).Color=C.borderLight
-	local JsonBox=Instance.new("TextBox",BoxBG); JsonBox.Size=UDim2.new(1,-12,1,-8); JsonBox.Position=UDim2.new(0,6,0,4); JsonBox.BackgroundTransparency=1; JsonBox.Text=""; JsonBox.PlaceholderText="Cole o JSON aqui..."; JsonBox.TextColor3=C.textPrim; JsonBox.PlaceholderColor3=C.textDim; JsonBox.Font=Enum.Font.Gotham; JsonBox.TextSize=10; JsonBox.MultiLine=true; JsonBox.TextXAlignment=Enum.TextXAlignment.Left; JsonBox.TextYAlignment=Enum.TextYAlignment.Top; JsonBox.ClearTextOnFocus=false; JsonBox.ZIndex=6
+		local saveBtn=Instance.new("TextButton",col); saveBtn.Size=UDim2.new(1,0,0,22); saveBtn.BackgroundColor3=C.cardHover; saveBtn.BorderSizePixel=0; saveBtn.Text="Salvar"; saveBtn.TextColor3=C.accentLight; saveBtn.Font=Enum.Font.GothamBold; saveBtn.TextSize=10; saveBtn.LayoutOrder=2; Instance.new("UICorner",saveBtn).CornerRadius=UDim.new(0,5)
 
-	local ApplyBtn=Instance.new("TextButton",LoadWrap); ApplyBtn.Size=UDim2.new(1,-16,0,28); ApplyBtn.Position=UDim2.new(0,8,0,128); ApplyBtn.BackgroundColor3=C.accent; ApplyBtn.BorderSizePixel=0; ApplyBtn.Text="APLICAR CONFIG"; ApplyBtn.TextColor3=C.white; ApplyBtn.Font=Enum.Font.GothamBold; ApplyBtn.TextSize=12; ApplyBtn.ZIndex=5
-	Instance.new("UICorner",ApplyBtn).CornerRadius=UDim.new(0,6)
+		local loadBtn=Instance.new("TextButton",col); loadBtn.Size=UDim2.new(1,0,0,22); loadBtn.BackgroundColor3=C.accent; loadBtn.BorderSizePixel=0; loadBtn.Text="Carregar"; loadBtn.TextColor3=C.white; loadBtn.Font=Enum.Font.GothamBold; loadBtn.TextSize=10; loadBtn.LayoutOrder=3; Instance.new("UICorner",loadBtn).CornerRadius=UDim.new(0,5)
 
-	LoadBtn.MouseButton1Click:Connect(function()
-		loadOpen=not loadOpen
-		if loadOpen then
-			TweenService:Create(LoadWrap,TweenInfo.new(0.2,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Size=UDim2.new(1,0,0,168)}):Play()
-			LoadBtn.Text="FECHAR"; LoadBtn.TextColor3=C.red
-			LoadDesc.Text="Cole o JSON e clique APLICAR"
-		else
-			TweenService:Create(LoadWrap,TweenInfo.new(0.15,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{Size=UDim2.new(1,0,0,44)}):Play()
-			LoadBtn.Text="COLAR"; LoadBtn.TextColor3=C.accentLight
-			LoadDesc.Text="Clique em COLAR para expandir a caixa"
-		end
-	end)
-
-	ApplyBtn.MouseButton1Click:Connect(function()
-		local json=JsonBox.Text
-		if not json or #json < 20 then
-			showToast("Cole o JSON primeiro!",false); return
-		end
-		local function parseBool(s) return s=="true" end
-		local function parseNum(s) return tonumber(s) end
-		local function parseStr(s) return s:match('"(.-)"') end
-		local function applySection(name,tbl)
-			local sec=json:match('"'..name..'"%s*:%s*(%b{})')
-			if not sec then return end
-			for k,v in sec:gmatch('"([%w]+)"%s*:%s*([%w".-]+)') do
-				if tbl[k]~=nil then
-					local t=type(tbl[k])
-					if t=="boolean" then tbl[k]=parseBool(v)
-					elseif t=="number" then tbl[k]=parseNum(v) or tbl[k]
-					elseif t=="string" then tbl[k]=parseStr(v) or tbl[k] end
-				end
+		saveBtn.MouseButton1Click:Connect(function()
+			profileData[name]=captureConfig()
+			saveBtn.Text="Salvo ✓"; saveBtn.BackgroundColor3=C.green
+			task.delay(1.5,function() saveBtn.Text="Salvar"; saveBtn.BackgroundColor3=C.cardHover end)
+			showToast("Perfil '"..name.."' salvo!",true)
+		end)
+		loadBtn.MouseButton1Click:Connect(function()
+			if not profileData[name] then showToast("Perfil '"..name.."' vazio!",false); return end
+			local d=profileData[name]
+			if d.ESP then for k,v in pairs(d.ESP) do ESP[k]=v end end
+			if d.AIMBOT then for k,v in pairs(d.AIMBOT) do AIMBOT[k]=v end end
+			if d.MISC then
+				if d.MISC.BigHead~=nil then onBigHeadToggle(d.MISC.BigHead) end
 			end
-		end
-		applySection("esp",ESP)
-		applySection("aimbot",AIMBOT)
-		applySection("combat",COMBAT)
-		applySection("misc",MISC)
-		local stateMap={
-			["ESP.Enabled"]=ESP.Enabled,["ESP.RGB"]=ESP.RGB,["ESP.Box"]=ESP.Box,
-			["ESP.Skeleton"]=ESP.Skeleton,["ESP.Names"]=ESP.Names,["ESP.Distance"]=ESP.Distance,
-			["ESP.HealthBar"]=ESP.HealthBar,["ESP.Tracers"]=ESP.Tracers,
-			["ESP.Radar"]=ESP.Radar,["ESP.VisionCone"]=ESP.VisionCone,
-			["AIMBOT.Enabled"]=AIMBOT.Enabled,["AIMBOT.Silent"]=AIMBOT.Silent,
-			["AIMBOT.Prediction"]=AIMBOT.Prediction,["AIMBOT.FOVCircle"]=AIMBOT.FOVCircle,
-			["AIMBOT.TeamCheck"]=AIMBOT.TeamCheck,["AIMBOT.VisCheck"]=AIMBOT.VisCheck,
-			["AIMBOT.AutoShoot"]=AIMBOT.AutoShoot,["AIMBOT.AimKey"]=AIMBOT.AimKey,
-			["AIMBOT.TargetSwitch"]=AIMBOT.TargetSwitch,["AIMBOT.AimShake"]=AIMBOT.AimShake,
-			["COMBAT.NoRecoil"]=COMBAT.NoRecoil,["COMBAT.NoSpread"]=COMBAT.NoSpread,
-			["COMBAT.RapidFire"]=COMBAT.RapidFire,["COMBAT.InfiniteAmmo"]=COMBAT.InfiniteAmmo,
-			["COMBAT.BunnyHop"]=COMBAT.BunnyHop,["COMBAT.FastReload"]=COMBAT.FastReload,
-			["COMBAT.AntiRagdoll"]=COMBAT.AntiRagdoll,["COMBAT.FlyHack"]=COMBAT.FlyHack,
-			["COMBAT.SpeedHack"]=COMBAT.SpeedHack,["COMBAT.JumpPower"]=COMBAT.JumpPower,
-			["COMBAT.InfiniteJump"]=COMBAT.InfiniteJump,
-			["MISC.CustomFOV"]=MISC.CustomFOV,["MISC.SpinBot"]=MISC.SpinBot,
-			["MISC.BigHead"]=MISC.BigHead,["MISC.Noclip"]=MISC.Noclip,
-			["MISC.WallBang"]=MISC.WallBang,["MISC.AntiAFK"]=MISC.AntiAFK,
-			["MISC.TimeOfDay"]=MISC.TimeOfDay,
-			["CONFIG.Notifications"]=CONFIG.Notifications,
-		}
-		for key,setter in pairs(toggleSetters) do
-			if stateMap[key]~=nil and setter then setter(stateMap[key]) end
-		end
-		if ESP.Enabled then refreshAllESP() end
-		applyBoxVisibility(); applyNameVisibility(); applyDistVisibility()
-		if AIMBOT.Enabled then startAimbotLoop() end
-		if AIMBOT.Silent then startSilentAim() end
-		if COMBAT.NoRecoil then onNoRecoilToggle(true) end
-		if COMBAT.NoSpread then onNoSpreadToggle(true) end
-		if COMBAT.RapidFire then applyRapidFire() end
-		if COMBAT.BunnyHop then onBunnyHopToggle(true) end
-		if COMBAT.InfiniteJump then onInfiniteJumpToggle(true) end
-		if COMBAT.SpeedHack then applySpeed() end
-		if COMBAT.JumpPower then applyJump() end
-		if COMBAT.AntiRagdoll then onAntiRagdollToggle(true) end
-		if MISC.CustomFOV then Camera.FieldOfView=MISC.FOVValue end
-		if MISC.SpinBot then onSpinBotToggle(true) end
-		if MISC.Noclip then onNoclipToggle(true) end
-		if MISC.AntiAFK then onAntiAFKToggle(true) end
-		if MISC.TimeOfDay then Lighting.ClockTime=MISC.TimeValue end
-		ApplyBtn.BackgroundColor3=C.green; ApplyBtn.Text="APLICADO!"
-		task.delay(1.5,function() ApplyBtn.BackgroundColor3=C.accent; ApplyBtn.Text="APLICAR CONFIG" end)
-		showToast("Config carregada com sucesso!",true)
-		loadOpen=false
-		TweenService:Create(LoadWrap,TweenInfo.new(0.15,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{Size=UDim2.new(1,0,0,44)}):Play()
-		LoadBtn.Text="COLAR"; LoadBtn.TextColor3=C.accentLight
-		LoadDesc.Text="Clique em COLAR para expandir a caixa"
-	end)
-	ApplyBtn.MouseEnter:Connect(function() TweenService:Create(ApplyBtn,TweenInfo.new(0.1),{BackgroundColor3=C.accentLight}):Play() end)
-	ApplyBtn.MouseLeave:Connect(function() TweenService:Create(ApplyBtn,TweenInfo.new(0.1),{BackgroundColor3=C.accent}):Play() end)
+			showToast("Perfil '"..name.."' carregado!",true)
+		end)
+	end
+	makeSpacer(p,6,16)
 
-	makeSpacer(p,10,16); makeGroupHeader(p,"Info",17); makeSpacer(p,3,18)
-	local infoWrap=Instance.new("Frame",p); infoWrap.Size=UDim2.new(1,0,0,32); infoWrap.BackgroundColor3=C.card; infoWrap.BorderSizePixel=0; infoWrap.LayoutOrder=19; Instance.new("UICorner",infoWrap).CornerRadius=UDim.new(0,7)
+	-- ── Hotkeys ──
+	makeGroupHeader(p,"Hotkeys",17); makeSpacer(p,3,18)
+
+	local hotkeys={
+		{label="Toggle ESP",         key="ESPKey"},
+		{label="Toggle BigHead",     key="BigHeadKey"},
+		{label="Toggle Aimbot",      key="AimbotKey"},
+		{label="Toggle Silent Aim",  key="SilentKey"},
+		{label="Toggle Noclip",      key="NoclipKey"},
+	}
+	-- Garante que KEYBINDS tem todas as entradas
+	KEYBINDS.AimbotKey=KEYBINDS.AimbotKey or nil
+	KEYBINDS.SilentKey=KEYBINDS.SilentKey or nil
+	KEYBINDS.NoclipKey=KEYBINDS.NoclipKey or nil
+
+	for i,hk in ipairs(hotkeys) do
+		local row=Instance.new("Frame",p); row.Size=UDim2.new(1,0,0,34); row.BackgroundColor3=C.card; row.BorderSizePixel=0; row.LayoutOrder=18+i; Instance.new("UICorner",row).CornerRadius=UDim.new(0,7)
+		local lbl=Instance.new("TextLabel",row); lbl.Size=UDim2.new(0.55,0,1,0); lbl.Position=UDim2.new(0,10,0,0); lbl.BackgroundTransparency=1; lbl.Text=hk.label; lbl.TextColor3=C.textPrim; lbl.Font=Enum.Font.Gotham; lbl.TextSize=12; lbl.TextXAlignment=Enum.TextXAlignment.Left
+		local keyBtn=Instance.new("TextButton",row); keyBtn.Size=UDim2.new(0,130,0,22); keyBtn.Position=UDim2.new(1,-138,0.5,-11); keyBtn.BackgroundColor3=C.cardHover; keyBtn.BorderSizePixel=0; keyBtn.Font=Enum.Font.GothamBold; keyBtn.TextSize=10; keyBtn.TextColor3=C.accentLight; Instance.new("UICorner",keyBtn).CornerRadius=UDim.new(0,5)
+		keyBtn.Text=KEYBINDS[hk.key] and tostring(KEYBINDS[hk.key]):gsub("Enum.KeyCode.","") or "-- clique para definir --"
+		_keyBindLabels[hk.key]=keyBtn
+		keyBtn.MouseButton1Click:Connect(function()
+			waitingForKey=hk.key; keyBtn.Text=">> pressione uma tecla <<"; keyBtn.TextColor3=C.textSec
+		end)
+	end
+	makeSpacer(p,10,30)
+
+	-- ── Changelog ──
+	makeGroupHeader(p,"Changelog",31); makeSpacer(p,3,32)
+	local changes={
+		{"v7.0","Sistema HWID, particulas, temas, perfis, hotkeys, watermark"},
+		{"v6.x","Aimbot silencioso, FOV circle, radar 2D, vision cone"},
+		{"v5.x","ESP completo, skeleton, tracers, health bar"},
+		{"v4.x","Combat: bhop, noclip, spinbot, bighead"},
+	}
+	for i,ch in ipairs(changes) do
+		local row=Instance.new("Frame",p); row.Size=UDim2.new(1,0,0,40); row.BackgroundColor3=C.card; row.BorderSizePixel=0; row.LayoutOrder=32+i; Instance.new("UICorner",row).CornerRadius=UDim.new(0,7)
+		local dot=Instance.new("Frame",row); dot.Size=UDim2.new(0,3,0.6,0); dot.Position=UDim2.new(0,0,0.2,0); dot.BackgroundColor3=C.accent; dot.BorderSizePixel=0; Instance.new("UICorner",dot).CornerRadius=UDim.new(1,0)
+		local ver=Instance.new("TextLabel",row); ver.Size=UDim2.new(0,38,0,18); ver.Position=UDim2.new(0,10,0.5,-9); ver.BackgroundColor3=C.accentGlow; ver.Text=ch[1]; ver.TextColor3=C.accentLight; ver.Font=Enum.Font.GothamBold; ver.TextSize=9; Instance.new("UICorner",ver).CornerRadius=UDim.new(0,4)
+		local desc=Instance.new("TextLabel",row); desc.Size=UDim2.new(1,-58,1,0); desc.Position=UDim2.new(0,52,0,0); desc.BackgroundTransparency=1; desc.Text=ch[2]; desc.TextColor3=C.textSec; desc.Font=Enum.Font.Gotham; desc.TextSize=10; desc.TextXAlignment=Enum.TextXAlignment.Left; desc.TextWrapped=true
+	end
+	makeSpacer(p,10,40)
+
+	-- ── Info ──
+	makeGroupHeader(p,"Info",41); makeSpacer(p,3,42)
+	local infoWrap=Instance.new("Frame",p); infoWrap.Size=UDim2.new(1,0,0,32); infoWrap.BackgroundColor3=C.card; infoWrap.BorderSizePixel=0; infoWrap.LayoutOrder=43; Instance.new("UICorner",infoWrap).CornerRadius=UDim.new(0,7)
 	local iLbl=Instance.new("TextLabel",infoWrap); iLbl.Size=UDim2.new(1,-16,1,0); iLbl.Position=UDim2.new(0,8,0,0); iLbl.BackgroundTransparency=1; iLbl.Text="Purity v7.0  |  ID: "..tostring(LocalPlayer.UserId); iLbl.TextColor3=C.textDim; iLbl.Font=Enum.Font.Gotham; iLbl.TextSize=11; iLbl.TextXAlignment=Enum.TextXAlignment.Left
 end
 buildConfig()
@@ -1459,7 +2113,7 @@ CloseBtn.MouseButton1Click:Connect(function()
 	local char=LocalPlayer.Character; local hum=char and char:FindFirstChildOfClass("Humanoid")
 	if hum then hum.WalkSpeed=16; hum.JumpPower=50; hum.PlatformStand=false end
 	for _,plr in ipairs(Players:GetPlayers()) do clearESP(plr); clearSkeleton(plr); clearTracer(plr); clearHealthBar(plr) end
-	hideRadar()
+	hideRadar(); RadarGui.Visible=false
 	TweenService:Create(Main,TweenInfo.new(0.2,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{Size=UDim2.new(0,WIN_W,0,0),BackgroundTransparency=1}):Play()
 	task.delay(0.25,function() ScreenGui:Destroy() end)
 end)
@@ -1502,6 +2156,24 @@ UserInputService.InputBegan:Connect(function(input,gpe)
 		onBigHeadToggle(MISC.BigHead)
 		showToast((MISC.BigHead and "[ON]  " or "[OFF] ").."Big Head",MISC.BigHead)
 	end
+	if KEYBINDS.AimbotKey and input.KeyCode==KEYBINDS.AimbotKey then
+		AIMBOT.Enabled=not AIMBOT.Enabled
+		if toggleSetters["AIMBOT.Enabled"] then toggleSetters["AIMBOT.Enabled"](AIMBOT.Enabled) end
+		if AIMBOT.Enabled then startAimbotLoop() else stopAimbotLoop() end
+		showToast((AIMBOT.Enabled and "[ON]  " or "[OFF] ").."Aimbot",AIMBOT.Enabled)
+	end
+	if KEYBINDS.SilentKey and input.KeyCode==KEYBINDS.SilentKey then
+		AIMBOT.Silent=not AIMBOT.Silent
+		if toggleSetters["AIMBOT.Silent"] then toggleSetters["AIMBOT.Silent"](AIMBOT.Silent) end
+		if AIMBOT.Silent then startSilentAim() else stopSilentAim() end
+		showToast((AIMBOT.Silent and "[ON]  " or "[OFF] ").."Silent Aim",AIMBOT.Silent)
+	end
+	if KEYBINDS.NoclipKey and input.KeyCode==KEYBINDS.NoclipKey then
+		MISC.Noclip=not MISC.Noclip
+		if toggleSetters["MISC.Noclip"] then toggleSetters["MISC.Noclip"](MISC.Noclip) end
+		onNoclipToggle(MISC.Noclip)
+		showToast((MISC.Noclip and "[ON]  " or "[OFF] ").."Noclip",MISC.Noclip)
+	end
 end)
 
 -- RGB Header
@@ -1518,3 +2190,5 @@ end)
 startAimbotLoop()
 Main.Size=UDim2.new(0,WIN_W,0,0); Main.BackgroundTransparency=0.7
 TweenService:Create(Main,TweenInfo.new(0.4,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Size=UDim2.new(0,WIN_W,0,WIN_H),BackgroundTransparency=0}):Play()
+
+end -- fim de loadMainGUI (so executa apos key valida)
