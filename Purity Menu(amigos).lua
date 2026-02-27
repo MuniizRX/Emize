@@ -20,7 +20,7 @@ local Camera      = workspace.CurrentCamera
 --  Formato no Gist: HWID|YYYY-MM-DD|apelido
 -- ============================================================
 
-local GIST_URL = "https://gist.githubusercontent.com/MuniizRX/8b7a81d27b80035bce29851ea92b3ba8/raw/purity_keys.txt"
+local GIST_URL = "https://gist.githubusercontent.com/MuniizRX/e0de8c9299806cf6ebd67c67c7133b1d/raw/6b53c72d1215191261859e9aeab270dffe74d467/purity_keys.txt"
 
 local function loadMainGUI() end -- placeholder, definida mais abaixo
 
@@ -2192,3 +2192,4 @@ Main.Size=UDim2.new(0,WIN_W,0,0); Main.BackgroundTransparency=0.7
 TweenService:Create(Main,TweenInfo.new(0.4,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{Size=UDim2.new(0,WIN_W,0,WIN_H),BackgroundTransparency=0}):Play()
 
 end -- fim de loadMainGUI (so executa apos key valida)
+
